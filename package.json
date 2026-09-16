@@ -1,0 +1,44 @@
+{
+  "name": "formyfans",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "cross-env NODE_ENV=development nodemon server.js",
+    "start": "NODE_ENV=production node server.js",
+    "backfill:product-ids": "node scripts/backfill-product-ids.js",
+    "backfill:order-ids": "node scripts/backfill-order-ids.js",
+    "migrate:order-statuses": "node scripts/migrate-order-statuses.js",
+    "backfill:usernames": "node scripts/generate-username.js",
+    "migrate:cloudinary:s3": "node scripts/migrateCloudinaryToS3.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1119.0",
+    "@aws-sdk/s3-request-presigner": "^3.1119.0",
+    "axios": "^1.20.0",
+    "bcrypt": "^6.0.0",
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "ejs": "^6.0.1",
+    "express": "^5.2.1",
+    "helmet": "^8.2.0",
+    "joi": "^18.2.1",
+    "jsonwebtoken": "^9.0.3",
+    "livekit-server-sdk": "^2.15.4",
+    "mongoose": "^9.5.0",
+    "node-cron": "^4.6.0",
+    "nodemailer": "^8.0.7",
+    "socket.io": "^4.8.3",
+    "stripe": "^22.1.1",
+    "uuid": "^14.0.2"
+  },
+  "devDependencies": {
+    "cross-env": "^10.1.0",
+    "nodemon": "^3.1.14"
+  }
+}

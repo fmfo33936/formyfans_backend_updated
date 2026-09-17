@@ -1,0 +1,7053 @@
+{
+  "info": {
+    "_postman_id": "formyfans-api-complete-v2",
+    "name": "FormyFans API - Complete & Dynamic Collection",
+    "description": "Official complete Postman collection for FormyFans API. Features dynamic token capture for users and admins, sequentially numbered endpoints, organized module folders, and configurable baseUrl.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "01. Auth & User Profile",
+      "item": [
+        {
+          "name": "1. Send OTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/send-otp",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "send-otp"
+              ]
+            },
+            "description": "Send 6-digit OTP code to email for registration",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "2. Verify OTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/verify-otp",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "verify-otp"
+              ]
+            },
+            "description": "Verify OTP sent to email",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"otp\": \"{{otp}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "3. Register / Create User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/create-user",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "create-user"
+              ]
+            },
+            "description": "Register a new user after verifying OTP. Dynamically saves userToken & userId to variables.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"image\": \"https://res.cloudinary.com/dsvhzxotv/image/upload/v1785517243/images/xnkksicydbm8lc0x2j1c.jpg\",\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"email\": \"{{email}}\",\n  \"username\": \"johndoe_fan\",\n  \"otp\": \"{{otp}}\",\n  \"password\": \"{{password}}\",\n  \"interests\": [\n    \"Tech\",\n    \"Music\"\n  ],\n  \"isAdult\": true,\n  \"dateOfBirth\": \"1998-05-15\",\n  \"gender\": \"male\",\n  \"location\": {\n    \"city\": \"New York\",\n    \"state\": \"NY\",\n    \"country\": \"USA\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    var res = pm.response.json();",
+                  "    if (res.token) {",
+                  "        pm.collectionVariables.set('userToken', res.token);",
+                  "        console.log('userToken set dynamically:', res.token);",
+                  "    }",
+                  "    if (res.userId) {",
+                  "        pm.collectionVariables.set('userId', res.userId);",
+                  "    } else if (res.user && res.user._id) {",
+                  "        pm.collectionVariables.set('userId', res.user._id);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4. Login User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login-user",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login-user"
+              ]
+            },
+            "description": "Login user with email and password. Dynamically sets userToken & userId.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    var res = pm.response.json();",
+                  "    if (res.token) {",
+                  "        pm.collectionVariables.set('userToken', res.token);",
+                  "        console.log('userToken set dynamically:', res.token);",
+                  "    }",
+                  "    if (res.userId) {",
+                  "        pm.collectionVariables.set('userId', res.userId);",
+                  "    } else if (res.user && res.user._id) {",
+                  "        pm.collectionVariables.set('userId', res.user._id);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5. Login Creator",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login-creator",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login-creator"
+              ]
+            },
+            "description": "Login creator with email and password. Dynamically sets userToken & userId.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    var res = pm.response.json();",
+                  "    if (res.token) {",
+                  "        pm.collectionVariables.set('userToken', res.token);",
+                  "        console.log('userToken set dynamically:', res.token);",
+                  "    }",
+                  "    if (res.userId) {",
+                  "        pm.collectionVariables.set('userId', res.userId);",
+                  "    } else if (res.user && res.user._id) {",
+                  "        pm.collectionVariables.set('userId', res.user._id);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6. Check Username Availability",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/check-username-availability",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "check-username-availability"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"johndoe_fan\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "7. Suggest Username",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/suggest-username",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "suggest-username"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "8. Forgot Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/forgot-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "forgot-password"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "9. Reset Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/reset-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "reset-password"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"otp\": \"{{otp}}\",\n  \"newPassword\": \"NewPassword123!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "10. Change Password",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/change-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "change-password"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currentPassword\": \"{{password}}\",\n  \"newPassword\": \"NewPassword123!\",\n  \"confirmNewPassword\": \"NewPassword123!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "11. Get Current User Profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "profile"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "12. Update Profile",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "profile"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"bio\": \"Digital creator and tech enthusiast.\",\n  \"tagLine\": \"Building cool things.\",\n  \"phoneNumber\": \"+1234567890\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "13. Update Profile Username",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/profile/username",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "profile",
+                "username"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"johndoe_pro\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "14. Get Profile by Username",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/profile/:username",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "profile",
+                ":username"
+              ],
+              "variable": [
+                {
+                  "key": "username",
+                  "value": ""
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "15. Get All Creators",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/creators?page=1&limit=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "creators"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "16. Get Creator Reviews",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/creator/:creatorId/reviews?page=1&limit=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "creator",
+                ":creatorId",
+                "reviews"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ],
+              "variable": [
+                {
+                  "key": "creatorId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "17. Set Creator Subscription Price",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/set-subscription-price",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "set-subscription-price"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"price\": 9.99\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "18. Get Creator Subscription Price",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/creator/price",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "creator",
+                "price"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "19. Check Fan Subscribed or Not",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/fan/subscribe/:username",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "fan",
+                "subscribe",
+                ":username"
+              ],
+              "variable": [
+                {
+                  "key": "username",
+                  "value": ""
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "20. Send Welcome Email",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/send-welcome",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "send-welcome"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"name\": \"John Doe\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "21. Admin Create Creator Account",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/creators",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "creators"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"image\": \"https://res.cloudinary.com/dsvhzxotv/image/upload/v1785517243/images/xnkksicydbm8lc0x2j1c.jpg\",\n  \"firstName\": \"Creator\",\n  \"lastName\": \"VIP\",\n  \"email\": \"creator_vip@example.com\",\n  \"username\": \"creator_vip\",\n  \"password\": \"CreatorPassword123!\",\n  \"interests\": [\n    \"Tech\",\n    \"Fitness\"\n  ],\n  \"isAdult\": true,\n  \"dateOfBirth\": \"1994-03-20\",\n  \"gender\": \"female\",\n  \"freeMonths\": 3\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "02. Admin Management",
+      "item": [
+        {
+          "name": "1. Create Admin",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/create",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "create"
+              ]
+            },
+            "description": "Create initial admin. Dynamically sets adminToken.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admin_master\",\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    var res = pm.response.json();",
+                  "    if (res.token) {",
+                  "        pm.collectionVariables.set('adminToken', res.token);",
+                  "        console.log('adminToken set dynamically:', res.token);",
+                  "    }",
+                  "    if (res.admin && res.admin._id) {",
+                  "        pm.collectionVariables.set('adminId', res.admin._id);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2. Login Admin",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "login"
+              ]
+            },
+            "description": "Admin login. Dynamically sets adminToken & adminId in variables.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    var res = pm.response.json();",
+                  "    if (res.token) {",
+                  "        pm.collectionVariables.set('adminToken', res.token);",
+                  "        console.log('adminToken set dynamically:', res.token);",
+                  "    }",
+                  "    if (res.admin && res.admin._id) {",
+                  "        pm.collectionVariables.set('adminId', res.admin._id);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3. Get Admin Profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "profile"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "4. Update Admin Profile",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "profile"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admin_master_updated\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "5. Change Admin Password",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/change-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "change-password"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"oldPassword\": \"{{adminPassword}}\",\n  \"newPassword\": \"NewAdminPassword123!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "6. Admin Forgot Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/forgot-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "forgot-password"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "7. Admin Verify OTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/verify-otp",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "verify-otp"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"otp\": \"{{otp}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "8. Admin Reset Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/reset-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "reset-password"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"otp\": \"{{otp}}\",\n  \"newPassword\": \"NewAdminPassword123!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "9. Get Dashboard Analytics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/dashboard",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "dashboard"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "10. Get All Users List",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/users?page=1&limit=10&role=creator",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "role",
+                  "value": "creator"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "11. Toggle User Active Status",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/users/:userId/toggle-activity",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "users",
+                ":userId",
+                "toggle-activity"
+              ],
+              "variable": [
+                {
+                  "key": "userId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "12. Set Creator Free Access Months",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/users/:userId/free-access",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "users",
+                ":userId",
+                "free-access"
+              ],
+              "variable": [
+                {
+                  "key": "userId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"months\": 3\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "13. Get All Orders (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/orders?page=1&limit=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "orders"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "14. Get Admin Settings",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin-settings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin-settings"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "15. Create Admin Settings",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin-settings/create",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin-settings",
+                "create"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"platformFee\": 10,\n  \"payoutThreshold\": 50\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "16. Update Admin Settings",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin-settings/update",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin-settings",
+                "update"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"platformFee\": 12,\n  \"payoutThreshold\": 50\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "03. Posts & Feed",
+      "item": [
+        {
+          "name": "1. Search Taggable Users",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/posts/tag-users/search?q=john",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "posts",
+                "tag-users",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "john"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "2. Create Post",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/posts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "posts"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"caption\": \"Excited to launch our new community today! 🔥\",\n  \"media\": [\n    {\n      \"url\": \"https://example.com/media/sample.jpg\",\n      \"type\": \"photo\",\n      \"publicId\": \"media/sample_123\"\n    }\n  ],\n  \"location\": \"New York, USA\",\n  \"isScheduled\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "3. Get All Posts (Feed)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/posts?page=1&limit=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "posts"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "4. Get Scheduled Posts",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/posts/sheduled",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "posts",
+                "sheduled"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "5. Get Upcoming Scheduled Posts",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/posts/upcoming-sheduled",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "posts",
+                "upcoming-sheduled"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "6. Get User Posts by Username",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/posts/username/:username?page=1&limit=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "posts",
+                "username",
+                ":username"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ],
+              "variable": [
+                {
+                  "key": "username",
+                  "value": ""
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "7. Get Single Post by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/posts/:postId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "posts",
+                ":postId"
+              ],
+              "variable": [
+                {
+                  "key": "postId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "8. Update Post",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/posts/:postId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "posts",
+                ":postId"
+              ],
+              "variable": [
+                {
+                  "key": "postId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"caption\": \"Updated post caption with more details!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "9. Delete Post",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/posts/:postId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "posts",
+                ":postId"
+              ],
+              "variable": [
+                {
+                  "key": "postId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "10. Like Post",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/posts/:postId/like",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "posts",
+                ":postId",
+                "like"
+              ],
+              "variable": [
+                {
+                  "key": "postId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "11. Unlike Post",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/posts/:postId/unlike",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "posts",
+                ":postId",
+                "unlike"
+              ],
+              "variable": [
+                {
+                  "key": "postId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "12. Get Post Likes",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/posts/:postId/likes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "posts",
+                ":postId",
+                "likes"
+              ],
+              "variable": [
+                {
+                  "key": "postId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "13. Create Post Comment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/posts/:postId/comments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "posts",
+                ":postId",
+                "comments"
+              ],
+              "variable": [
+                {
+                  "key": "postId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"This is great content, keep it up!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "14. Get Post Comments",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/posts/:postId/comments?page=1&limit=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "posts",
+                ":postId",
+                "comments"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ],
+              "variable": [
+                {
+                  "key": "postId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "15. Delete Post Comment",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/posts/:postId/comments/:commentId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "posts",
+                ":postId",
+                "comments",
+                ":commentId"
+              ],
+              "variable": [
+                {
+                  "key": "postId",
+                  "value": ""
+                },
+                {
+                  "key": "commentId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "16. Share Post",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/posts/share",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "posts",
+                "share"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"postId\": \"POST_ID_HERE\",\n  \"caption\": \"Sharing this amazing post\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "17. Track Batch Post Impressions",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/posts/impression",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "posts",
+                "impression"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"postIds\": [\n    \"POST_ID_HERE\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "18. Track Profile Visit from Post",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/posts/:postId/profile-visit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "posts",
+                ":postId",
+                "profile-visit"
+              ],
+              "variable": [
+                {
+                  "key": "postId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "19. Get Post Analytics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/posts/:postId/analytics",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "posts",
+                ":postId",
+                "analytics"
+              ],
+              "variable": [
+                {
+                  "key": "postId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "04. Stories",
+      "item": [
+        {
+          "name": "1. Create Story",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/stories",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "stories"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mediaUrl\": \"https://example.com/media/story.mp4\",\n  \"mediaType\": \"video\",\n  \"caption\": \"Behind the scenes today!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "2. Get Active Stories (Feed)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/stories/active",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "stories",
+                "active"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "3. Get Active Stories by User ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/stories/user/:userId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "stories",
+                "user",
+                ":userId"
+              ],
+              "variable": [
+                {
+                  "key": "userId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "05. Exclusive Content (VIP)",
+      "item": [
+        {
+          "name": "1. Create Exclusive Content",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/exclusive-content",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "exclusive-content"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"caption\": \"VIP Exclusive tutorial and masterclass.\",\n  \"media\": [\n    {\n      \"url\": \"https://example.com/exclusive/file.mp4\",\n      \"type\": \"video\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "2. Get All Exclusive Content",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/exclusive-content?page=1&limit=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "exclusive-content"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "3. Get Exclusive Content by Username",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/exclusive-content/username/:username?page=1&limit=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "exclusive-content",
+                "username",
+                ":username"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ],
+              "variable": [
+                {
+                  "key": "username",
+                  "value": ""
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "4. Get Single Exclusive Content by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/exclusive-content/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "exclusive-content",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": ""
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "5. Update Exclusive Content",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/exclusive-content/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "exclusive-content",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"caption\": \"Updated exclusive details.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "6. Delete Exclusive Content",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/exclusive-content/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "exclusive-content",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": ""
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "7. Like Exclusive Content",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/exclusive-content/:postId/like",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "exclusive-content",
+                ":postId",
+                "like"
+              ],
+              "variable": [
+                {
+                  "key": "postId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "8. Unlike Exclusive Content",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/exclusive-content/:postId/unlike",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "exclusive-content",
+                ":postId",
+                "unlike"
+              ],
+              "variable": [
+                {
+                  "key": "postId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "9. Get Exclusive Content Likes",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/exclusive-content/:postId/likes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "exclusive-content",
+                ":postId",
+                "likes"
+              ],
+              "variable": [
+                {
+                  "key": "postId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "10. Create Comment on Exclusive Content",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/exclusive-content/:postId/comments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "exclusive-content",
+                ":postId",
+                "comments"
+              ],
+              "variable": [
+                {
+                  "key": "postId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Loving this exclusive drop!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "11. Get Exclusive Content Comments",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/exclusive-content/:postId/comments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "exclusive-content",
+                ":postId",
+                "comments"
+              ],
+              "variable": [
+                {
+                  "key": "postId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "12. Delete Exclusive Content Comment",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/exclusive-content/:postId/comments/:commentId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "exclusive-content",
+                ":postId",
+                "comments",
+                ":commentId"
+              ],
+              "variable": [
+                {
+                  "key": "postId",
+                  "value": ""
+                },
+                {
+                  "key": "commentId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "13. Share Exclusive Content",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/exclusive-content/share",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "exclusive-content",
+                "share"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"postId\": \"POST_ID_HERE\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "06. Follow, Feed & Favourites",
+      "item": [
+        {
+          "name": "1. Follow User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/follow",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "follow"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"{{creatorId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "2. Unfollow User",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/follow/:userId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "follow",
+                ":userId"
+              ],
+              "variable": [
+                {
+                  "key": "userId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "3. Check Is Following User",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/follow/:userId/is-following",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "follow",
+                ":userId",
+                "is-following"
+              ],
+              "variable": [
+                {
+                  "key": "userId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "4. Get My Followers",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/follow/followers?page=1&limit=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "follow",
+                "followers"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "5. Get My Following",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/follow/following?page=1&limit=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "follow",
+                "following"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "6. Get Follower Suggestions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/follow/followers/suggestions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "follow",
+                "followers",
+                "suggestions"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "7. Dismiss Follow Suggestion",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/follow/followers/suggestions/dismiss",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "follow",
+                "followers",
+                "suggestions",
+                "dismiss"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"{{creatorId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "8. Get Following Feed",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/feed/following?page=1&limit=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "feed",
+                "following"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "9. Add Favourite Creator",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/favourites",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "favourites"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"favouriteUserId\": \"{{creatorId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "10. Remove Favourite Creator",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/favourites/:favouriteUserId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "favourites",
+                ":favouriteUserId"
+              ],
+              "variable": [
+                {
+                  "key": "favouriteUserId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "11. Get My Favourites List",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/favourites",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "favourites"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "07. Products & Shop",
+      "item": [
+        {
+          "name": "1. Create Product",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/products/create",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "products",
+                "create"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Exclusive Creator Hoodie\",\n  \"description\": \"Premium heavy cotton hoodie with custom embroidery.\",\n  \"price\": 49.99,\n  \"stock\": 100,\n  \"images\": [\n    \"https://example.com/hoodie.jpg\"\n  ],\n  \"category\": \"Merchandise\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "2. List Products",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/products/list?page=1&limit=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "products",
+                "list"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "3. Get Products by Creator",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/products/creator/:creatorId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "products",
+                "creator",
+                ":creatorId"
+              ],
+              "variable": [
+                {
+                  "key": "creatorId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "4. Get Single Product by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/products/:productId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "products",
+                ":productId"
+              ],
+              "variable": [
+                {
+                  "key": "productId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "5. Update Product",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/products/:productId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "products",
+                ":productId"
+              ],
+              "variable": [
+                {
+                  "key": "productId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Exclusive Creator Hoodie (2nd Edition)\",\n  \"price\": 54.99\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "6. Update Product Status",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/products/:productId/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "products",
+                ":productId",
+                "status"
+              ],
+              "variable": [
+                {
+                  "key": "productId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"active\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "7. Toggle Product Status",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/products/:productId/status/toggle",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "products",
+                ":productId",
+                "status",
+                "toggle"
+              ],
+              "variable": [
+                {
+                  "key": "productId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "8. Delete Product",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/products/:productId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "products",
+                ":productId"
+              ],
+              "variable": [
+                {
+                  "key": "productId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "08. Cart, Orders & Payments",
+      "item": [
+        {
+          "name": "1. Add to Cart",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/cart/add",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cart",
+                "add"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productId\": \"PRODUCT_ID_HERE\",\n  \"quantity\": 2\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "2. Get Cart",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/cart",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cart"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "3. Remove Cart Item",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/cart/item/:productId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cart",
+                "item",
+                ":productId"
+              ],
+              "variable": [
+                {
+                  "key": "productId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "4. Clear Cart",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/cart/clear",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cart",
+                "clear"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "5. Create Order",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders/create",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "create"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"shippingAddress\": {\n    \"street\": \"742 Evergreen Terrace\",\n    \"city\": \"Springfield\",\n    \"state\": \"OR\",\n    \"postalCode\": \"97477\",\n    \"country\": \"USA\"\n  },\n  \"items\": [\n    {\n      \"productId\": \"PRODUCT_ID_HERE\",\n      \"quantity\": 1,\n      \"price\": 49.99\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "6. Get My Orders",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders/my",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "my"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "7. Get Creator Shop Orders",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders/shop",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "shop"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "8. Get All Orders (Admin or User)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "9. Get Order by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders/:orderId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                ":orderId"
+              ],
+              "variable": [
+                {
+                  "key": "orderId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "10. Update Order Status",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders/:orderId/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                ":orderId",
+                "status"
+              ],
+              "variable": [
+                {
+                  "key": "orderId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"shipped\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "11. Cancel Order",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders/:orderId/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                ":orderId",
+                "cancel"
+              ],
+              "variable": [
+                {
+                  "key": "orderId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "12. Get Order Payment Details",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/details/:orderId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "details",
+                ":orderId"
+              ],
+              "variable": [
+                {
+                  "key": "orderId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "13. Create Stripe Client Secret for Order",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders/create-client-secret",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "create-client-secret"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderId\": \"ORDER_ID_HERE\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "14. Create Payment Intent for Order",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/payment-intent/:orderId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "payment-intent",
+                ":orderId"
+              ],
+              "variable": [
+                {
+                  "key": "orderId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "15. Confirm Order Payment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders/confirm-payment/:orderId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "confirm-payment",
+                ":orderId"
+              ],
+              "variable": [
+                {
+                  "key": "orderId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"paymentIntentId\": \"pi_1234567890\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "16. Update Payment Status from Stripe",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders/update-payment-status/:orderId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "update-payment-status",
+                ":orderId"
+              ],
+              "variable": [
+                {
+                  "key": "orderId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"paymentIntentId\": \"pi_1234567890\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "09. Platform Subscriptions & Plans",
+      "item": [
+        {
+          "name": "1. Fetch Subscription Plans",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/subscription-plans/fetch",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "subscription-plans",
+                "fetch"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "2. Create Subscription Plan (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/subscription-plans/create",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "subscription-plans",
+                "create"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Creator Pro Plan\",\n  \"price\": 19.99,\n  \"duration\": \"monthly\",\n  \"features\": [\n    \"Unlimited uploads\",\n    \"Lower fees\",\n    \"Live stream access\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "3. Update Subscription Plan",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/subscription-plans/:planId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "subscription-plans",
+                ":planId"
+              ],
+              "variable": [
+                {
+                  "key": "planId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"price\": 24.99\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "4. Delete Subscription Plan",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/subscription-plans/:planId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "subscription-plans",
+                ":planId"
+              ],
+              "variable": [
+                {
+                  "key": "planId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "5. Initiate Subscription Setup Intent",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/subscription/initiate-setup",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "subscription",
+                "initiate-setup"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "6. Confirm Subscription Setup",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/subscription/confirm-setup",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "subscription",
+                "confirm-setup"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"setupIntentId\": \"seti_123456789\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "7. Buy / Create Subscription",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/subscription/buy",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "subscription",
+                "buy"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"planId\": \"PLAN_ID_HERE\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "8. Create Subscription (Direct)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/subscription/create",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "subscription",
+                "create"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"planId\": \"PLAN_ID_HERE\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "9. Get Current Active Subscription",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/subscription/current",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "subscription",
+                "current"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "10. Get Subscription Payment History",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/subscription/history",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "subscription",
+                "history"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "11. Cancel Subscription",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/subscription/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "subscription",
+                "cancel"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "12. Resume Subscription",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/subscription/resume",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "subscription",
+                "resume"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "13. Create Subscription for Internal Users",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/subscription/create-internal",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "subscription",
+                "create-internal"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "10. Fan Subscriptions (Creator Monthly)",
+      "item": [
+        {
+          "name": "1. Initiate Creator Subscription",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/fan/subscribe/initiate/:username",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "fan",
+                "subscribe",
+                "initiate",
+                ":username"
+              ],
+              "variable": [
+                {
+                  "key": "username",
+                  "value": ""
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "2. Confirm Creator Subscription",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/fan/subscribe/confirm/:username",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "fan",
+                "subscribe",
+                "confirm",
+                ":username"
+              ],
+              "variable": [
+                {
+                  "key": "username",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"paymentMethodId\": \"pm_123456789\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "3. Get Creator Subscription Status",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/fan/subscribe/status/:username",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "fan",
+                "subscribe",
+                "status",
+                ":username"
+              ],
+              "variable": [
+                {
+                  "key": "username",
+                  "value": ""
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "4. Cancel Creator Subscription",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/fan/subscribe/cancel/:username",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "fan",
+                "subscribe",
+                "cancel",
+                ":username"
+              ],
+              "variable": [
+                {
+                  "key": "username",
+                  "value": ""
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "5. Resume Creator Subscription",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/fan/subscribe/resume/:username",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "fan",
+                "subscribe",
+                "resume",
+                ":username"
+              ],
+              "variable": [
+                {
+                  "key": "username",
+                  "value": ""
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "6. Create Subscription Client Secret",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/subscription/create-client-secret",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "subscription",
+                "create-client-secret"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"price\": 9.99\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "11. Brand Deals & Collaborations",
+      "item": [
+        {
+          "name": "1. Admin Get All Deals Dashboard",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/deal/admin/all?page=1&limit=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "deal",
+                "admin",
+                "all"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "2. Admin Verify Incomplete Deal",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/deal/admin/:dealId/verify-incomplete",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "deal",
+                "admin",
+                ":dealId",
+                "verify-incomplete"
+              ],
+              "variable": [
+                {
+                  "key": "dealId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "3. Admin Get Deal Details",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/deal/admin/:dealId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "deal",
+                "admin",
+                ":dealId"
+              ],
+              "variable": [
+                {
+                  "key": "dealId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "4. Create / Send New Deal",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/deal",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "deal"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"receiver\": \"{{creatorId}}\",\n  \"title\": \"Sponsorship for Spring Collection\",\n  \"amount\": 500,\n  \"description\": \"Post 1 main feed post and 2 promotional stories reviewing our products.\",\n  \"deadline\": \"2026-10-31\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "5. Get Sent Deals (Sender)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/deal/sent",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "deal",
+                "sent"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "6. Get Received Deals (Receiver)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/deal/received",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "deal",
+                "received"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "7. Get Deals In Progress",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/deal/in-progress",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "deal",
+                "in-progress"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "8. Get Received Deals In Start Status",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/deal/received/started",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "deal",
+                "received",
+                "started"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "9. Get Completed Deals",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/deal/completed",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "deal",
+                "completed"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "10. Get Cancelled or Paused Deals",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/deal/cancelled-paused",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "deal",
+                "cancelled-paused"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "11. Get Single Deal by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/deal/:dealId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "deal",
+                ":dealId"
+              ],
+              "variable": [
+                {
+                  "key": "dealId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "12. Receiver Accept Deal",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/deal/:dealId/accept",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "deal",
+                ":dealId",
+                "accept"
+              ],
+              "variable": [
+                {
+                  "key": "dealId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "13. Receiver Reject Deal",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/deal/:dealId/reject",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "deal",
+                ":dealId",
+                "reject"
+              ],
+              "variable": [
+                {
+                  "key": "dealId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "14. Receiver Request Completion",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/deal/:dealId/request-completion",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "deal",
+                ":dealId",
+                "request-completion"
+              ],
+              "variable": [
+                {
+                  "key": "dealId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "15. Sender Pay for Deal (Escrow)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/deal/:dealId/pay",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "deal",
+                ":dealId",
+                "pay"
+              ],
+              "variable": [
+                {
+                  "key": "dealId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "16. Sender Pause Deal",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/deal/:dealId/pause",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "deal",
+                ":dealId",
+                "pause"
+              ],
+              "variable": [
+                {
+                  "key": "dealId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "17. Sender Resume Deal",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/deal/:dealId/resume",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "deal",
+                ":dealId",
+                "resume"
+              ],
+              "variable": [
+                {
+                  "key": "dealId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "18. Sender Cancel Deal",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/deal/:dealId/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "deal",
+                ":dealId",
+                "cancel"
+              ],
+              "variable": [
+                {
+                  "key": "dealId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "19. Sender Verify Completion & Release Funds",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/deal/:dealId/verify-completion",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "deal",
+                ":dealId",
+                "verify-completion"
+              ],
+              "variable": [
+                {
+                  "key": "dealId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "20. Add Review for Completed Deal",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/deal/:dealId/review",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "deal",
+                ":dealId",
+                "review"
+              ],
+              "variable": [
+                {
+                  "key": "dealId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rating\": 5,\n  \"comment\": \"Exceptional collaboration and fast turnaround!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "12. Campaigns & Sponsorships",
+      "item": [
+        {
+          "name": "1. Admin Get All Campaigns",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/campaigns/admin/all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "campaigns",
+                "admin",
+                "all"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "2. Calculate Campaign Estimated Reach",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/campaigns/estimated-reach",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "campaigns",
+                "estimated-reach"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"budget\": 250,\n  \"targetAudience\": [\n    \"Tech\",\n    \"Gaming\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "3. Create Campaign",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/campaigns",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "campaigns"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Summer Fitness Challenge\",\n  \"budget\": 300,\n  \"description\": \"Promoting our new supplement line across fitness creators.\",\n  \"objectiveId\": \"OBJECTIVE_ID_HERE\",\n  \"categoryId\": \"CATEGORY_ID_HERE\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "4. Confirm Campaign Payment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/campaigns/confirm-payment",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "campaigns",
+                "confirm-payment"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"campaignId\": \"CAMPAIGN_ID_HERE\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "5. Retry Campaign Payment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/campaigns/retry-payment",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "campaigns",
+                "retry-payment"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"campaignId\": \"CAMPAIGN_ID_HERE\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "6. Get My Campaigns",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/campaigns",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "campaigns"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "7. Get Single Campaign by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/campaigns/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "campaigns",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": ""
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "8. Update Campaign",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/campaigns/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "campaigns",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Summer Fitness Challenge (Extended)\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "9. Delete Campaign",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/campaigns/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "campaigns",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": ""
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "10. Like Campaign",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/campaigns/:campaignId/like",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "campaigns",
+                ":campaignId",
+                "like"
+              ],
+              "variable": [
+                {
+                  "key": "campaignId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "11. Unlike Campaign",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/campaigns/:campaignId/unlike",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "campaigns",
+                ":campaignId",
+                "unlike"
+              ],
+              "variable": [
+                {
+                  "key": "campaignId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "12. Get Campaign Likes",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/campaigns/:campaignId/likes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "campaigns",
+                ":campaignId",
+                "likes"
+              ],
+              "variable": [
+                {
+                  "key": "campaignId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "13. Create Campaign Comment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/campaigns/:campaignId/comments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "campaigns",
+                ":campaignId",
+                "comments"
+              ],
+              "variable": [
+                {
+                  "key": "campaignId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"We are interested in collaborating on this!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "14. Get Campaign Comments",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/campaigns/:campaignId/comments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "campaigns",
+                ":campaignId",
+                "comments"
+              ],
+              "variable": [
+                {
+                  "key": "campaignId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "15. Delete Campaign Comment",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/campaigns/:campaignId/comments/:commentId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "campaigns",
+                ":campaignId",
+                "comments",
+                ":commentId"
+              ],
+              "variable": [
+                {
+                  "key": "campaignId",
+                  "value": ""
+                },
+                {
+                  "key": "commentId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "16. Share Campaign",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/campaigns/share",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "campaigns",
+                "share"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"campaignId\": \"CAMPAIGN_ID_HERE\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "17. List Campaign Objectives",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/campaign-objectives",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "campaign-objectives"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "18. Create Campaign Objective",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/campaign-objectives",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "campaign-objectives"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Brand Awareness\",\n  \"description\": \"Increase profile visibility\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "19. Get Campaign Objective by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/campaign-objectives/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "campaign-objectives",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": ""
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "20. Update Campaign Objective",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/campaign-objectives/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "campaign-objectives",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Direct Conversions\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "21. Delete Campaign Objective",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/campaign-objectives/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "campaign-objectives",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": ""
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "22. List Campaign Categories",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/campaign-categories",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "campaign-categories"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "23. Create Campaign Category",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/campaign-categories",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "campaign-categories"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Technology & Gadgets\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "24. Get Campaign Category by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/campaign-categories/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "campaign-categories",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": ""
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "25. Update Campaign Category",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/campaign-categories/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "campaign-categories",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Tech & Software\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "26. Delete Campaign Category",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/campaign-categories/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "campaign-categories",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": ""
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "13. Live Streaming & Fanbugs",
+      "item": [
+        {
+          "name": "1. List Active Live Streams",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/live-streams",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "live-streams"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "2. Create Live Stream (Creator)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/live-streams",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "live-streams"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Exclusive Q&A Session with Fans\",\n  \"isPrivate\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "3. Get Live Stream Details",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/live-streams/:streamId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "live-streams",
+                ":streamId"
+              ],
+              "variable": [
+                {
+                  "key": "streamId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "4. Generate Stream Join Token (LiveKit)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/live-streams/:streamId/token",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "live-streams",
+                ":streamId",
+                "token"
+              ],
+              "variable": [
+                {
+                  "key": "streamId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "5. End Live Stream",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/live-streams/:streamId/end",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "live-streams",
+                ":streamId",
+                "end"
+              ],
+              "variable": [
+                {
+                  "key": "streamId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "6. List Live Stream Comments",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/live-streams/:streamId/comments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "live-streams",
+                ":streamId",
+                "comments"
+              ],
+              "variable": [
+                {
+                  "key": "streamId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "7. Send Live Stream Comment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/live-streams/:streamId/comments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "live-streams",
+                ":streamId",
+                "comments"
+              ],
+              "variable": [
+                {
+                  "key": "streamId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Great stream! Greetings from London!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "8. List Stream Fanbug Tips",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/live-streams/:streamId/fanbugs",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "live-streams",
+                ":streamId",
+                "fanbugs"
+              ],
+              "variable": [
+                {
+                  "key": "streamId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "9. Create Fanbug Payment Intent (Tip)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/live-streams/:streamId/fanbugs/intent",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "live-streams",
+                ":streamId",
+                "fanbugs",
+                "intent"
+              ],
+              "variable": [
+                {
+                  "key": "streamId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 10,\n  \"currency\": \"usd\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "10. Confirm Fanbug Payment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/live-streams/:streamId/fanbugs/confirm",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "live-streams",
+                ":streamId",
+                "fanbugs",
+                "confirm"
+              ],
+              "variable": [
+                {
+                  "key": "streamId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"paymentIntentId\": \"pi_123456789\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "14. Payouts & Stripe Connect",
+      "item": [
+        {
+          "name": "1. Check Stripe Onboarding Status",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/payouts/onboarding-status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "payouts",
+                "onboarding-status"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "2. Connect Vendor Stripe Account",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/payouts/connect-stripe",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "payouts",
+                "connect-stripe"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "3. Get Stripe Onboarding Link",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/payouts/onboarding-link",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "payouts",
+                "onboarding-link"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "4. Get Deals Payout Summary",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/payouts/payouts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "payouts",
+                "payouts"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "5. Redeem Deal Payout Amount",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/payouts/redeem-amount",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "payouts",
+                "redeem-amount"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 150\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "6. Get Fanbug Streams Payouts",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/payouts/fanbug-payouts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "payouts",
+                "fanbug-payouts"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "7. Redeem Fanbug Streams Payout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/payouts/fanbug-streams",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "payouts",
+                "fanbug-streams"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 75\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "8. Get Fan Subscriptions Payouts",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/payouts/fan-subscription-payouts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "payouts",
+                "fan-subscription-payouts"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "9. Redeem Fan Subscriptions Payout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/payouts/fan-subscriptions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "payouts",
+                "fan-subscriptions"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 100\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "15. Boost & Post Promotions",
+      "item": [
+        {
+          "name": "1. Calculate Boost Estimated Reach",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/boost/estimate-reach",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "boost",
+                "estimate-reach"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"budget\": 50,\n  \"duration\": 7\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "2. Create Post Boost",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/boost",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "boost"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"postId\": \"POST_ID_HERE\",\n  \"budget\": 50,\n  \"duration\": 7,\n  \"targetAudience\": {\n    \"interests\": [\n      \"Music\",\n      \"Fashion\"\n    ],\n    \"gender\": \"all\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "3. Finalize Boost Payment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/boost/:boostId/finalize",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "boost",
+                ":boostId",
+                "finalize"
+              ],
+              "variable": [
+                {
+                  "key": "boostId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"paymentIntentId\": \"pi_123456789\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "4. Get Creator Boost Analytics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/boost/my-analytics",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "boost",
+                "my-analytics"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "5. Track Boost Website Click",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/boost/:boostId/website-click",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "boost",
+                ":boostId",
+                "website-click"
+              ],
+              "variable": [
+                {
+                  "key": "boostId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "16. Messaging & Chat",
+      "item": [
+        {
+          "name": "1. Create Conversation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/conversations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "conversations"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"receiverId\": \"{{creatorId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "2. Get User Conversations",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/conversations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "conversations"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "3. Get Messages in Conversation",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/messages/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "messages",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": ""
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "17. Media, Notifications, Cards & Activity",
+      "item": [
+        {
+          "name": "1. Generate S3 Presigned Upload URL",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/upload/presigned-url",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "upload",
+                "presigned-url"
+              ]
+            },
+            "description": "Generates secure AWS S3 presigned PUT URL. Allowed folders: media, docs, voice.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fileName\": \"photo.jpg\",\n  \"fileType\": \"image/jpeg\",\n  \"folder\": \"media\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "2. Save Uploaded Media Record",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/media/upload",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "media",
+                "upload"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"url\": \"https://my-bucket.s3.amazonaws.com/media/sample.jpg\",\n  \"publicId\": \"media/sample_123.jpg\",\n  \"type\": \"photo\",\n  \"caption\": \"My uploaded photo\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "3. Get Media by Username",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/media/username/:username",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "media",
+                "username",
+                ":username"
+              ],
+              "variable": [
+                {
+                  "key": "username",
+                  "value": ""
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "4. Delete Media Record",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/media/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "media",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": ""
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "5. Get Notifications List",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/notifications?page=1&limit=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notifications"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "6. Get Unread Notifications Count",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/notifications/count",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notifications",
+                "count"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "7. Mark All Notifications as Read",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/notifications/mark-all-read",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notifications",
+                "mark-all-read"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "8. Get Activity Logs",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/activity-logs?page=1&limit=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "activity-logs"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "9. Get Saved Payment Cards",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/cards",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cards"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "10. Delete Saved Payment Card",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/cards/:paymentMethodId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cards",
+                ":paymentMethodId"
+              ],
+              "variable": [
+                {
+                  "key": "paymentMethodId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "18. System & Webhooks",
+      "item": [
+        {
+          "name": "1. API Test Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/test",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "test"
+              ]
+            },
+            "description": "Health check endpoint testing whether API server is responding."
+          },
+          "response": []
+        },
+        {
+          "name": "2. Stripe Main Webhook",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/webhook",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "webhook"
+              ]
+            },
+            "description": "Stripe raw webhook handler.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"payment_intent.succeeded\",\n  \"data\": {}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "3. Stripe Boost Webhook",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/webhooks/stripe",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "webhooks",
+                "stripe"
+              ]
+            },
+            "description": "Stripe raw webhook handler for boosted posts.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"payment_intent.succeeded\",\n  \"data\": {}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Pre-request script (global)"
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Global Test Script: Capture token if returned at top-level response",
+          "if (pm.response && pm.response.code >= 200 && pm.response.code < 300) {",
+          "    try {",
+          "        var json = pm.response.json();",
+          "        if (json.token && !pm.request.url.getPath().includes('admin')) {",
+          "            pm.collectionVariables.set('userToken', json.token);",
+          "        }",
+          "    } catch (e) {",
+          "        // Non-JSON response",
+          "    }",
+          "}"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5009/api",
+      "type": "string",
+      "description": "Backend Base URL. Set to live or local server (e.g. http://localhost:5009/api or https://myfans-9eec8796eb21.herokuapp.com/api)"
+    },
+    {
+      "key": "userToken",
+      "value": "",
+      "type": "string",
+      "description": "Dynamic User JWT Token set automatically via login/register scripts"
+    },
+    {
+      "key": "adminToken",
+      "value": "",
+      "type": "string",
+      "description": "Dynamic Admin JWT Token set automatically via admin login/create scripts"
+    },
+    {
+      "key": "userId",
+      "value": "",
+      "type": "string",
+      "description": "Current logged-in User ID"
+    },
+    {
+      "key": "creatorId",
+      "value": "",
+      "type": "string",
+      "description": "Target Creator User ID for testing"
+    },
+    {
+      "key": "adminId",
+      "value": "",
+      "type": "string",
+      "description": "Current logged-in Admin ID"
+    },
+    {
+      "key": "email",
+      "value": "user@example.com",
+      "type": "string",
+      "description": "User test email"
+    },
+    {
+      "key": "password",
+      "value": "Password123!",
+      "type": "string",
+      "description": "User test password"
+    },
+    {
+      "key": "adminEmail",
+      "value": "admin@formyfans.com",
+      "type": "string",
+      "description": "Admin test email"
+    },
+    {
+      "key": "adminPassword",
+      "value": "AdminPassword123!",
+      "type": "string",
+      "description": "Admin test password"
+    },
+    {
+      "key": "otp",
+      "value": "123456",
+      "type": "string",
+      "description": "OTP for registration or password reset"
+    }
+  ]
+}

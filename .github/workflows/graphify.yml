@@ -1,0 +1,49 @@
+name: Auto Update Graphify Knowledge Graph
+
+on:
+  push:
+    branches:
+      - dev
+      - main
+      - master
+    paths-ignore:
+      - 'graphify-out/**'
+      - '*.md'
+      - '.gitignore'
+
+jobs:
+  update-graphify:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Graphify
+        run: |
+          python -m pip install --upgrade pip
+          pip install graphifyy
+
+      - name: Update Graphify Knowledge Graph
+        run: |
+          python -m graphify update . || (python -m graphify extract . --code-only --force && python -m graphify cluster-only .)
+
+      - name: Commit and Push Changes
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add graphify-out/
+          if git diff --staged --quiet; then
+            echo "No changes to knowledge graph."
+          else
+            git commit -m "chore(graphify): auto-update knowledge graph on push [skip ci]"
+            git push
+          fi

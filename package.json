@@ -10,7 +10,9 @@
     "backfill:order-ids": "node scripts/backfill-order-ids.js",
     "migrate:order-statuses": "node scripts/migrate-order-statuses.js",
     "backfill:usernames": "node scripts/generate-username.js",
-    "migrate:cloudinary:s3": "node scripts/migrateCloudinaryToS3.js"
+    "migrate:cloudinary:s3": "node scripts/migrateCloudinaryToS3.js",
+    "graph": "node scripts/update-graphify.js",
+    "postman:build": "node scripts/generate-postman-collection.js"
   },
   "keywords": [],
   "author": "",

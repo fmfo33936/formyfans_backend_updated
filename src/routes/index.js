@@ -30,6 +30,9 @@ const liveStreamRoutes = require("./liveStream");
 const payoutRoutes = require("./payout");
 const adminSettingsRoutes = require("./adminSettings");
 const boostRoutes = require("./boost");
+const aiRoutes = require("./ai");
+const creditRoutes = require("./credits");
+
 
 //model 
 
@@ -60,9 +63,13 @@ router.use("/campaign-categories", campaignCategoryRoutes);
 router.use("/campaigns", campaignRoutes);
 router.use("/deal", dealRoutes);
 router.use("/cards", cardRoutes);
+router.use("/payment-methods", cardRoutes);
 router.use("/live-streams", liveStreamRoutes);
 router.use("/payouts", payoutRoutes);
 router.use("/admin-settings", adminSettingsRoutes);
 router.use("/boost", boostRoutes);
+router.use("/ai", aiRoutes);
+router.use("/credits", creditRoutes);
 
 module.exports = router;
+

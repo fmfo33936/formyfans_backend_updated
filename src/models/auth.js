@@ -71,6 +71,7 @@ const AuthSchema = new mongoose.Schema(
     stripeConnectAccountId: { type: String, default: null },
     activeSubscriptionId: { type: String, default: null },
     activeSubscriptionExpiresAt: { type: Date, default: null },
+    isAIPremiumActive: { type: Boolean, default: false },
 
     // Internal users
     isInternalUser: { type: Boolean, default: false },

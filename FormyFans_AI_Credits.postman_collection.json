@@ -1,0 +1,802 @@
+{
+  "info": {
+    "_postman_id": "formyfans-ai-credits-v2",
+    "name": "FormyFans - AI & Credit System Collection",
+    "description": "Comprehensive Postman collection for FormyFans AI & Credit System. Features dynamic script-based auto token capture ({{userToken}}, {{adminToken}}), dynamic price calculation, one-time credit purchase/subscription flow, webhook-ready verification, and private S3 media generation.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "0. Quick Authentication",
+      "description": "Authenticate to dynamically populate {{userToken}} and {{adminToken}} in collection variables.",
+      "item": [
+        {
+          "name": "1. User Login (Auto Token)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login-user",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login-user"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{userEmail}}\",\n  \"password\": \"{{userPassword}}\"\n}"
+            },
+            "description": "Logs in user and dynamically sets {{userToken}} and {{userId}}."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    var json = pm.response.json();",
+                  "    var token = json.token || (json.data && json.data.token);",
+                  "    if (token) {",
+                  "        pm.collectionVariables.set('userToken', token);",
+                  "        console.log('userToken set dynamically:', token);",
+                  "    }",
+                  "    var userId = json.userId || (json.user && json.user._id) || (json.data && json.data.user && json.data.user._id);",
+                  "    if (userId) {",
+                  "        pm.collectionVariables.set('userId', userId);",
+                  "        console.log('userId set dynamically:', userId);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2. Admin Login (Auto Token)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "login"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}"
+            },
+            "description": "Logs in admin and dynamically sets {{adminToken}}."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    var json = pm.response.json();",
+                  "    var token = json.token || (json.data && json.data.token);",
+                  "    if (token) {",
+                  "        pm.collectionVariables.set('adminToken', token);",
+                  "        console.log('adminToken set dynamically:', token);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "1. AI Subscription & Credit Payments",
+      "description": "Dynamic pricing, price calculation, Stripe PaymentIntent purchase, server verification, and payment history.",
+      "item": [
+        {
+          "name": "1. Get Dynamic AI Plan & Pricing",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/credits/pricing",
+              "host": ["{{baseUrl}}"],
+              "path": ["credits", "pricing"]
+            },
+            "description": "Returns the single dynamic plan details (planName: 'Unlock AI Premium Feature', pricePerCredit: 0.1999, defaultCredits: 100, defaultPriceUsd: 19.99, features)."
+          }
+        },
+        {
+          "name": "2. Calculate Dynamic Price for Credits",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/credits/calculate-price",
+              "host": ["{{baseUrl}}"],
+              "path": ["credits", "calculate-price"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"credits\": 100\n}"
+            },
+            "description": "Dynamically calculates price in USD based on selected credit amount (e.g. 100 credits -> $19.99)."
+          }
+        },
+        {
+          "name": "3. Purchase Credits (Initiate PaymentIntent)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/credits/purchase",
+              "host": ["{{baseUrl}}"],
+              "path": ["credits", "purchase"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"credits\": 100\n}"
+            },
+            "description": "Creates Stripe PaymentIntent for the dynamic credit amount ($19.99 for 100 credits). Pre-creates pending AIPaymentHistory record and automatically saves paymentIntentId to {{paymentIntentId}}."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    var json = pm.response.json();",
+                  "    var piId = (json.data && json.data.paymentIntentId) || json.paymentIntentId;",
+                  "    if (piId) {",
+                  "        pm.collectionVariables.set('paymentIntentId', piId);",
+                  "        console.log('paymentIntentId set to:', piId);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.1 Confirm PaymentIntent via Stripe",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{stripeSecretKey}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "url": {
+              "raw": "https://api.stripe.com/v1/payment_intents/{{paymentIntentId}}/confirm",
+              "protocol": "https",
+              "host": ["api", "stripe", "com"],
+              "path": ["v1", "payment_intents", "{{paymentIntentId}}", "confirm"]
+            },
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "payment_method",
+                  "value": "pm_card_visa",
+                  "type": "text"
+                },
+                {
+                  "key": "return_url",
+                  "value": "https://localhost:5009/return",
+                  "type": "text"
+                }
+              ]
+            },
+            "description": "Direct Stripe REST API confirmation using test card pm_card_visa (identical to 5.1 Confirm SetupIntent via Stripe). Immediately transitions PaymentIntent status to 'succeeded'."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "    var json = pm.response.json();",
+                  "    console.log('PaymentIntent confirmed via Stripe! Status:', json.status);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4. Verify Payment & Credit Account",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/credits/verify-payment",
+              "host": ["{{baseUrl}}"],
+              "path": ["credits", "verify-payment"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"paymentIntentId\": \"{{paymentIntentId}}\"\n}"
+            },
+            "description": "Server-side verification of payment. Verifies status is 'succeeded', credits user balance idempotently, updates AIPaymentHistory, and activates isAIPremiumActive."
+          }
+        },
+        {
+          "name": "5. Get User Credit Balance",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/credits/balance",
+              "host": ["{{baseUrl}}"],
+              "path": ["credits", "balance"]
+            },
+            "description": "Returns current user credit balance (available & reserved)."
+          }
+        },
+        {
+          "name": "6. Get AI Subscription / Payment History",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/credits/history?page=1&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["credits", "history"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "10" }
+              ]
+            },
+            "description": "Returns separate user AI payment and subscription history records."
+          }
+        },
+        {
+          "name": "7. Get Credit Transactions (Ledger)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/credits/transactions?page=1&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["credits", "transactions"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "10" }
+              ]
+            },
+            "description": "Returns complete immutable ledger of all credit balance movements."
+          }
+        },
+        {
+          "name": "8. Admin: Update Credit Pricing Rules",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/credits/pricing",
+              "host": ["{{baseUrl}}"],
+              "path": ["credits", "pricing"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"planName\": \"Unlock AI Premium Feature\",\n  \"pricePerCredit\": 0.1999,\n  \"defaultCredits\": 100,\n  \"minCredits\": 10,\n  \"imageReservationCredits\": 10,\n  \"videoReservationCredits\": 50,\n  \"videoEditReservationCredits\": 60\n}"
+            },
+            "description": "Admin endpoint to adjust price per credit and generation reservation minimums."
+          }
+        }
+      ]
+    },
+    {
+    "name": "2. AI Prompt Refinement",
+    "description": "2-Step interactive prompt flow: Input raw prompt -> OpenAI GPT refines into high-detail production prompt -> User reviews/edits -> Hits generation.",
+    "item": [
+      {
+        "name": "1. Refine Prompt (OpenAI GPT-4o-mini)",
+        "request": {
+          "method": "POST",
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "key": "Authorization",
+              "value": "Bearer {{userToken}}"
+            }
+          ],
+          "url": {
+            "raw": "{{baseUrl}}/ai/prompts/refine",
+            "host": ["{{baseUrl}}"],
+            "path": ["ai", "prompts", "refine"]
+          },
+          "body": {
+            "mode": "raw",
+            "raw": "{\n  \"type\": \"IMAGE\",\n  \"prompt\": \"a red sports car speeding through rain in neon city\",\n  \"style\": \"Cinematic, Hyper-realistic, 8k\"\n}"
+          },
+          "description": "Refines raw user prompt using OpenAI GPT. Saves to DB and sets {{promptId}} and {{refinedPrompt}} in collection variables."
+        },
+        "event": [
+          {
+            "listen": "test",
+            "script": {
+              "type": "text/javascript",
+              "exec": [
+                "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                "    var json = pm.response.json();",
+                "    var pId = json.data ? json.data.promptId : json.promptId;",
+                "    var refPrompt = json.data ? json.data.refinedPrompt : json.refinedPrompt;",
+                "    if (pId) {",
+                "        pm.collectionVariables.set('promptId', pId);",
+                "        console.log('promptId set to:', pId);",
+                "    }",
+                "    if (refPrompt) {",
+                "        pm.collectionVariables.set('refinedPrompt', refPrompt);",
+                "        console.log('refinedPrompt set');",
+                "    }",
+                "}"
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "name": "2. Get Refined Prompt by ID",
+        "request": {
+          "method": "GET",
+          "header": [
+            {
+              "key": "Authorization",
+              "value": "Bearer {{userToken}}"
+            }
+          ],
+          "url": {
+            "raw": "{{baseUrl}}/ai/prompts/{{promptId}}",
+            "host": ["{{baseUrl}}"],
+            "path": ["ai", "prompts", "{{promptId}}"]
+          },
+          "description": "Fetches details of a previously refined prompt by ID."
+        }
+      },
+      {
+        "name": "3. List Refined Prompts",
+        "request": {
+          "method": "GET",
+          "header": [
+            {
+              "key": "Authorization",
+              "value": "Bearer {{userToken}}"
+            }
+          ],
+          "url": {
+            "raw": "{{baseUrl}}/ai/prompts?page=1&limit=10",
+            "host": ["{{baseUrl}}"],
+            "path": ["ai", "prompts"],
+            "query": [
+              { "key": "page", "value": "1" },
+              { "key": "limit", "value": "10" }
+            ]
+          },
+          "description": "Lists all refined prompts saved by authenticated user."
+        }
+      }
+    ]
+  },
+  {
+    "name": "3. S3 Media Uploads (Inputs)",
+    "description": "Upload input videos or reference images directly to private AWS S3 bucket.",
+    "item": [
+      {
+        "name": "1. Presign S3 Upload URL",
+        "request": {
+          "method": "POST",
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "key": "Authorization",
+              "value": "Bearer {{userToken}}"
+            }
+          ],
+          "url": {
+            "raw": "{{baseUrl}}/ai/uploads/presign",
+            "host": ["{{baseUrl}}"],
+            "path": ["ai", "uploads", "presign"]
+          },
+          "body": {
+            "mode": "raw",
+            "raw": "{\n  \"fileName\": \"input_video.mp4\",\n  \"fileType\": \"video/mp4\"\n}"
+          },
+          "description": "Generates a presigned S3 PUT URL for direct client file upload. Saves fileKey to {{videoReferenceKey}}."
+        },
+        "event": [
+          {
+            "listen": "test",
+            "script": {
+              "type": "text/javascript",
+              "exec": [
+                "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                "    var json = pm.response.json();",
+                "    var fileKey = json.data ? json.data.fileKey : json.fileKey;",
+                "    if (fileKey) {",
+                "        pm.collectionVariables.set('videoReferenceKey', fileKey);",
+                "        console.log('videoReferenceKey set:', fileKey);",
+                "    }",
+                "}"
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "name": "2. Direct Upload to S3 (Base64)",
+        "request": {
+          "method": "POST",
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "key": "Authorization",
+              "value": "Bearer {{userToken}}"
+            }
+          ],
+          "url": {
+            "raw": "{{baseUrl}}/ai/uploads/direct",
+            "host": ["{{baseUrl}}"],
+            "path": ["ai", "uploads", "direct"]
+          },
+          "body": {
+            "mode": "raw",
+            "raw": "{\n  \"fileName\": \"sample_image.jpg\",\n  \"fileType\": \"image/jpeg\",\n  \"base64Data\": \"/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP...\"\n}"
+          },
+          "description": "Directly streams base64 image or video to AWS S3 bucket and returns fileKey."
+        }
+      }
+    ]
+  },
+  {
+    "name": "4. AI Content Generation (Magica)",
+    "description": "Triggers Magica generation using refined prompt, downloads output directly to private S3, and provides user-friendly status polling.",
+    "item": [
+      {
+        "name": "1. Generate AI Image",
+        "request": {
+          "method": "POST",
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "key": "Authorization",
+              "value": "Bearer {{userToken}}"
+            }
+          ],
+          "url": {
+            "raw": "{{baseUrl}}/ai/generate/image",
+            "host": ["{{baseUrl}}"],
+            "path": ["ai", "generate", "image"]
+          },
+          "body": {
+            "mode": "raw",
+            "raw": "{\n  \"promptId\": \"{{promptId}}\",\n  \"resolution\": \"1080p\",\n  \"aspectRatio\": \"16:9\"\n}"
+          },
+          "description": "Initiates AI Image generation using the refined prompt. Returns 202 Accepted with friendly processing message and sets {{generationId}}."
+        },
+        "event": [
+          {
+            "listen": "test",
+            "script": {
+              "type": "text/javascript",
+              "exec": [
+                "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                "    var json = pm.response.json();",
+                "    var genId = (json.data && json.data.generationId) || json.generationId;",
+                "    if (genId) {",
+                "        pm.collectionVariables.set('generationId', genId);",
+                "        console.log('generationId set to:', genId);",
+                "    }",
+                "}"
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "name": "2. Generate AI Video",
+        "request": {
+          "method": "POST",
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "key": "Authorization",
+              "value": "Bearer {{userToken}}"
+            }
+          ],
+          "url": {
+            "raw": "{{baseUrl}}/ai/generate/video",
+            "host": ["{{baseUrl}}"],
+            "path": ["ai", "generate", "video"]
+          },
+          "body": {
+            "mode": "raw",
+            "raw": "{\n  \"promptId\": \"{{promptId}}\",\n  \"resolution\": \"720p\",\n  \"aspectRatio\": \"16:9\",\n  \"duration\": 10,\n  \"audio\": true\n}"
+          },
+          "description": "Initiates AI Video generation using the refined prompt. Reserves 50 credits and returns friendly job status."
+        },
+        "event": [
+          {
+            "listen": "test",
+            "script": {
+              "type": "text/javascript",
+              "exec": [
+                "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                "    var json = pm.response.json();",
+                "    var genId = (json.data && json.data.generationId) || json.generationId;",
+                "    if (genId) {",
+                "        pm.collectionVariables.set('generationId', genId);",
+                "        console.log('generationId set to:', genId);",
+                "    }",
+                "}"
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "name": "3. Edit AI Video",
+        "request": {
+          "method": "POST",
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "key": "Authorization",
+              "value": "Bearer {{userToken}}"
+            }
+          ],
+          "url": {
+            "raw": "{{baseUrl}}/ai/generate/video-edit",
+            "host": ["{{baseUrl}}"],
+            "path": ["ai", "generate", "video-edit"]
+          },
+          "body": {
+            "mode": "raw",
+            "raw": "{\n  \"videoReference\": \"{{videoReferenceKey}}\",\n  \"prompt\": \"Transform the weather into a rainy cyberpunk night with neon reflections\",\n  \"audio\": true\n}"
+          },
+          "description": "Initiates AI Video Edit. Reserves 60 credits and returns friendly job status."
+        },
+        "event": [
+          {
+            "listen": "test",
+            "script": {
+              "type": "text/javascript",
+              "exec": [
+                "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                "    var json = pm.response.json();",
+                "    var genId = (json.data && json.data.generationId) || json.generationId;",
+                "    if (genId) {",
+                "        pm.collectionVariables.set('generationId', genId);",
+                "        console.log('generationId set to:', genId);",
+                "    }",
+                "}"
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "name": "4. Poll Generation Status & Result",
+        "request": {
+          "method": "GET",
+          "header": [
+            {
+              "key": "Authorization",
+              "value": "Bearer {{userToken}}"
+            }
+          ],
+          "url": {
+            "raw": "{{baseUrl}}/ai/generations/{{generationId}}",
+            "host": ["{{baseUrl}}"],
+            "path": ["ai", "generations", "{{generationId}}"]
+          },
+          "description": "Polls the status of the generation job. Returns friendly status ('processing' with progress percentage, or 'completed' with mediaUrl and S3 storage key, or 'failed' with refund confirmation)."
+        }
+      },
+      {
+        "name": "5. List User Generations (History)",
+        "request": {
+          "method": "GET",
+          "header": [
+            {
+              "key": "Authorization",
+              "value": "Bearer {{userToken}}"
+            }
+          ],
+          "url": {
+            "raw": "{{baseUrl}}/ai/generations?page=1&limit=10",
+            "host": ["{{baseUrl}}"],
+            "path": ["ai", "generations"],
+            "query": [
+              { "key": "page", "value": "1" },
+              { "key": "limit", "value": "10" }
+            ]
+          },
+          "description": "Returns user-friendly paginated list of all past AI generations."
+        }
+      }
+    ]
+  }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5009/api",
+      "type": "string",
+      "description": "Base URL of the Node.js backend"
+    },
+    {
+      "key": "userEmail",
+      "value": "user@example.com",
+      "type": "string",
+      "description": "Test user email"
+    },
+    {
+      "key": "userPassword",
+      "value": "Password123!",
+      "type": "string",
+      "description": "Test user password"
+    },
+    {
+      "key": "adminEmail",
+      "value": "admin@formyfans.com",
+      "type": "string",
+      "description": "Test admin email"
+    },
+    {
+      "key": "adminPassword",
+      "value": "AdminPassword123!",
+      "type": "string",
+      "description": "Test admin password"
+    },
+    {
+      "key": "userToken",
+      "value": "",
+      "type": "string",
+      "description": "Dynamic User JWT Token set automatically via login script"
+    },
+    {
+      "key": "adminToken",
+      "value": "",
+      "type": "string",
+      "description": "Dynamic Admin JWT Token set automatically via admin login script"
+    },
+    {
+      "key": "userId",
+      "value": "",
+      "type": "string",
+      "description": "Dynamic User ID set automatically via login script"
+    },
+    {
+      "key": "promptId",
+      "value": "",
+      "type": "string",
+      "description": "Dynamically captured AIPrompt ID from prompt refinement"
+    },
+    {
+      "key": "refinedPrompt",
+      "value": "",
+      "type": "string",
+      "description": "Dynamically captured refined prompt from OpenAI"
+    },
+    {
+      "key": "videoReferenceKey",
+      "value": "users/sample/ai-inputs/sample_video.mp4",
+      "type": "string",
+      "description": "Captured S3 key from Presign Upload"
+    },
+    {
+      "key": "imageReferenceKey",
+      "value": "users/sample/ai-inputs/sample_image.jpg",
+      "type": "string",
+      "description": "Captured S3 key from Presign Upload"
+    },
+    {
+      "key": "generationId",
+      "value": "",
+      "type": "string",
+      "description": "Dynamically captured AIGeneration ID"
+    },
+    {
+      "key": "paymentIntentId",
+      "value": "",
+      "type": "string",
+      "description": "Dynamically captured Stripe PaymentIntent ID"
+    },
+    {
+      "key": "stripeSecretKey",
+      "value": "sk_test_51PMlmpAE1lXUvAexOgiBxJitUHvv9z7wTo97vtZfeK0JoC8OD4EqzOTQO5mbVPdmwk2M3Ujm6EXXAw8sMmnOv6Oa00dtTG9IS8",
+      "type": "string",
+      "description": "Stripe Secret Key for direct Stripe REST API confirmation"
+    }
+  ]
+}

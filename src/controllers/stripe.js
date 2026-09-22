@@ -125,7 +125,22 @@ const handleStripeWebhook = async (req, res) => {
             await campaign.save();
           }
         }
+
+        if (sub?.metadata?.type === "ai_subscription_credit_purchase" || sub?.metadata?.type === "credit_purchase") {
+          const userId = sub?.metadata?.userId;
+          const creditsToAdd = Number(sub?.metadata?.creditsToBuy) || 0;
+          if (userId && creditsToAdd > 0) {
+            const creditService = require("../services/credits/creditService");
+            await creditService.addPurchasedCredits(
+              userId,
+              creditsToAdd,
+              sub.id,
+              `Purchased ${creditsToAdd} credits via Stripe Webhook`
+            );
+          }
+        }
         break;
+
       }
 
       case "payment_intent.payment_failed": {
@@ -139,8 +154,21 @@ const handleStripeWebhook = async (req, res) => {
             paymentStatus: "failed",
           });
         }
+
+        if (sub?.metadata?.type === "ai_subscription_credit_purchase" || sub?.metadata?.type === "credit_purchase") {
+          try {
+            const AIPaymentHistory = require("../models/AIPaymentHistory");
+            await AIPaymentHistory.findOneAndUpdate(
+              { stripePaymentIntentId: sub.id },
+              { status: "failed" }
+            );
+          } catch (err) {
+            console.error("Error updating failed AIPaymentHistory:", err.message);
+          }
+        }
         break;
       }
+
 
       case "charge.refunded": {
         const sub = event.data.object;
@@ -322,12 +350,11 @@ async function handleInvoicePaid(invoice) {
 
   await subscription.save();
 
-  const user = await User.findById(subscription.userId);
-  if (user) {
-    user.activeSubscriptionId = subscription._id;
-    user.activeSubscriptionExpiresAt = subscription.currentPeriodEnd;
-    await user.save();
-  }
+  await User.findByIdAndUpdate(subscription.userId, {
+    activeSubscriptionId: subscription._id,
+    activeSubscriptionExpiresAt: subscription.currentPeriodEnd,
+  });
+
 
   const alreadyLogged = await PaymentHistory.findOne({
     stripeInvoiceId: invoice.id,

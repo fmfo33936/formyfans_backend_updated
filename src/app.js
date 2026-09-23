@@ -34,7 +34,7 @@ app.use((req, res, next) => {
 });
 
 app.get("/api/test", (req, res) => {
-  res.send({ message: "API is working!" });
+  res.send({ message: "API is working..." });
 });
 
 app.use("/api/upload", presignedUrlRoutes);

@@ -98,6 +98,7 @@ class AIGenerationService {
     aiJobQueue.enqueue(generation._id);
 
     const estimatedWait = type === "IMAGE" ? 45 : 65;
+    const typeLabel = type === "VIDEO_EDIT" ? "edited video" : type.toLowerCase();
 
     return {
       generationId: generation._id,
@@ -107,7 +108,7 @@ class AIGenerationService {
       progress: 5,
       reservedCredits: generation.reservedCredits,
       prompt: finalRefinedPrompt || finalPrompt,
-      message: `Your ${type.toLowerCase()} generation request has been accepted and is being created by AI. Please check back shortly.`,
+      message: `Your ${typeLabel} is being created by AI. Please check back shortly.`,
       estimatedWaitSeconds: estimatedWait,
       createdAt: generation.createdAt,
     };
@@ -129,12 +130,13 @@ class AIGenerationService {
     const isCompleted = generation.status === "COMPLETED";
     const isFailed = generation.status === "FAILED";
     const isProcessing = generation.status === "PROCESSING" || generation.status === "PENDING";
+    const typeLabel = generation.type === "VIDEO_EDIT" ? "edited video" : generation.type.toLowerCase();
 
-    let friendlyMessage = "Your AI generation is currently processing. Please check back in a few seconds.";
+    let friendlyMessage = `Your ${typeLabel} is currently processing. Please check back in a few seconds.`;
     if (isCompleted) {
-      friendlyMessage = `Your ${generation.type.toLowerCase()} has been generated successfully and saved to your S3 storage!`;
+      friendlyMessage = `Your AI ${typeLabel} is ready!`;
     } else if (isFailed) {
-      friendlyMessage = generation.errorMessage || "Generation could not be completed. Your credits have been refunded.";
+      friendlyMessage = generation.errorMessage || `We couldn't generate your ${typeLabel} right now. Your credits have been refunded.`;
     }
 
     return {

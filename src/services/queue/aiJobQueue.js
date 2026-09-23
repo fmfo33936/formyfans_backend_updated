@@ -5,8 +5,18 @@ const creditService = require("../credits/creditService");
 const openaiService = require("../ai/openaiService");
 const magicaService = require("../ai/magicaService");
 const s3MediaService = require("../s3/s3MediaService");
-const { emitToUser } = require("../../socket/socket");
 const logger = require("../../utils/logger");
+
+const safeEmitToUser = (userId, event, data) => {
+  try {
+    const socketModule = require("../../socket/socket");
+    if (socketModule && typeof socketModule.emitToUser === "function") {
+      socketModule.emitToUser(userId, event, data);
+    }
+  } catch (err) {
+    logger.warn(`[Queue] Socket emit skipped: ${err.message}`);
+  }
+};
 
 class AIJobQueue {
   constructor() {
@@ -54,7 +64,7 @@ class AIJobQueue {
 
     const { userId, type, prompt, settings = {}, references = {}, reservedCredits } = generation;
 
-    emitToUser(userId, "ai:generation_progress", {
+    safeEmitToUser(userId, "ai:generation_progress", {
       generationId: generation._id,
       type,
       status: "processing",
@@ -75,7 +85,7 @@ class AIJobQueue {
         generation.progress = 20;
         await generation.save();
 
-        emitToUser(userId, "ai:generation_progress", {
+        safeEmitToUser(userId, "ai:generation_progress", {
           generationId: generation._id,
           type,
           status: "processing",
@@ -96,7 +106,7 @@ class AIJobQueue {
       generation.progress = 40;
       await generation.save();
 
-      emitToUser(userId, "ai:generation_progress", {
+      safeEmitToUser(userId, "ai:generation_progress", {
         generationId: generation._id,
         type,
         status: "processing",
@@ -126,7 +136,7 @@ class AIJobQueue {
       generation.progress = 60;
       await generation.save();
 
-      emitToUser(userId, "ai:generation_progress", {
+      safeEmitToUser(userId, "ai:generation_progress", {
         generationId: generation._id,
         type,
         status: "processing",
@@ -162,12 +172,12 @@ class AIJobQueue {
       generation.progress = 85;
       await generation.save();
 
-      emitToUser(userId, "ai:generation_progress", {
+      safeEmitToUser(userId, "ai:generation_progress", {
         generationId: generation._id,
         type,
         status: "processing",
         progress: 85,
-        message: "Transferring generated media permanently to your secure S3 bucket...",
+        message: "Finalizing and preparing your media...",
       });
 
       const s3Saved = await s3MediaService.downloadAndSaveToS3({
@@ -177,8 +187,8 @@ class AIJobQueue {
         type,
       });
 
-      // Permanent S3 media URL replaces any temporary provider URL
-      const finalMediaUrl = s3Saved?.presignedReadUrl || s3Saved?.s3Url || magicaResult.mediaUrl;
+      // Permanent clean S3 URL (short & direct without query parameters)
+      const finalMediaUrl = s3Saved?.s3Url || s3Saved?.presignedReadUrl || magicaResult.mediaUrl;
       const finalS3Key = s3Saved?.s3Key || null;
 
       // Step 4: Track usage
@@ -227,7 +237,10 @@ class AIJobQueue {
         `AI ${type} Generation: ${(generation.refinedPrompt || prompt).substring(0, 40)}...`
       );
 
-      // Step 6: Mark generation as COMPLETED with permanent S3 URL
+      // Step 6: Mark generation as COMPLETED with permanent clean S3 URL
+      const typeLabel = type === "VIDEO_EDIT" ? "edited video" : type.toLowerCase();
+      const friendlySuccessMsg = `Your AI ${typeLabel} is ready!`;
+
       generation.status = "COMPLETED";
       generation.progress = 100;
       generation.resultUrl = finalMediaUrl;
@@ -255,7 +268,7 @@ class AIJobQueue {
       }
 
       // Push real-time completion event to specific user via Socket.io
-      emitToUser(userId, "ai:generation_completed", {
+      safeEmitToUser(userId, "ai:generation_completed", {
         generationId: generation._id,
         contentId: generation.contentId,
         type,
@@ -264,11 +277,11 @@ class AIJobQueue {
         mediaUrl: finalMediaUrl,
         s3Key: finalS3Key,
         creditsDeducted: finalCreditsDeducted,
-        message: `Your ${type.toLowerCase()} has been generated successfully and saved to your S3 storage!`,
+        message: friendlySuccessMsg,
         completedAt: generation.completedAt,
       });
 
-      logger.info(`AI Generation ${generation._id} (${type}) completed and saved to S3. Real-time socket event dispatched.`);
+      logger.info(`AI Generation ${generation._id} (${type}) completed. Direct S3 URL: ${finalMediaUrl}`);
     } catch (error) {
       logger.error(`AI Generation ${generation._id} failed: ${error.message}`);
 
@@ -284,9 +297,10 @@ class AIJobQueue {
         logger.error(`Failed to refund credits for generation ${generation._id}: ${refundErr.message}`);
       }
 
+      const typeLabel = type === "VIDEO_EDIT" ? "edited video" : type.toLowerCase();
       generation.status = "FAILED";
       generation.progress = 0;
-      generation.errorMessage = `We could not complete your ${type.toLowerCase()} generation at this time. All ${reservedCredits} reserved credits have been fully refunded to your account.`;
+      generation.errorMessage = `We couldn't generate your ${typeLabel} right now. All ${reservedCredits} reserved credits have been refunded to your account.`;
       await generation.save();
 
       if (generation.contentId) {
@@ -296,7 +310,7 @@ class AIJobQueue {
       }
 
       // Push real-time failure notification to user via Socket.io
-      emitToUser(userId, "ai:generation_failed", {
+      safeEmitToUser(userId, "ai:generation_failed", {
         generationId: generation._id,
         contentId: generation.contentId,
         type,

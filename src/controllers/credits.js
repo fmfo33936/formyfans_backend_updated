@@ -84,23 +84,7 @@ const getTransactions = async (req, res, next) => {
 const getPricing = async (req, res, next) => {
   try {
     const pricing = await CreditPricing.getActivePricing();
-    const defaultPriceUsd = Number((pricing.defaultCredits * pricing.pricePerCredit).toFixed(2));
-
-    return successHelper(
-      res,
-      {
-        planName: pricing.planName,
-        planDescription: pricing.planDescription,
-        pricePerCredit: pricing.pricePerCredit,
-        defaultCredits: pricing.defaultCredits,
-        defaultPriceUsd,
-        minCredits: pricing.minCredits,
-        maxCredits: pricing.maxCredits,
-        features: pricing.features,
-      },
-      "Credit pricing retrieved",
-      200
-    );
+    return successHelper(res, pricing, "Credit pricing retrieved", 200);
   } catch (err) {
     return next(err);
   }

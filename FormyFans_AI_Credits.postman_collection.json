@@ -794,9 +794,9 @@
     },
     {
       "key": "stripeSecretKey",
-      "value": "sk_test_51PMlmpAE1lXUvAexOgiBxJitUHvv9z7wTo97vtZfeK0JoC8OD4EqzOTQO5mbVPdmwk2M3Ujm6EXXAw8sMmnOv6Oa00dtTG9IS8",
+      "value": "",
       "type": "string",
-      "description": "Stripe Secret Key for direct Stripe REST API confirmation"
+      "description": "Stripe Secret Key for direct Stripe REST API confirmation (set your test secret key here)"
     }
   ]
 }

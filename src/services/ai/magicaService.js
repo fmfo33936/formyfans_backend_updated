@@ -72,9 +72,9 @@ class MagicaService {
 
     const inputPayload = {
       prompt,
-      duration: Number(duration) || 10,
+      duration: this._normalizeVideoDuration(duration),
       aspect_ratio: aspectRatio || "16:9",
-      resolution: resolution || "720p",
+      resolution: this._normalizeVideoResolution(resolution),
       generate_audio: Boolean(audio),
     };
 
@@ -153,15 +153,22 @@ class MagicaService {
     }
 
     // Start run
-    const startRes = await axios.post(`${this.baseUrl}/nodes/${nodeType}/run`, runBody, {
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${this.apiKey}`,
-        "User-Agent": "FormyFansAI/1.0",
-      },
-      timeout: 60000,
-    });
+    let startRes;
+    try {
+      startRes = await axios.post(`${this.baseUrl}/nodes/${nodeType}/run`, runBody, {
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${this.apiKey}`,
+          "User-Agent": "FormyFansAI/1.0",
+        },
+        timeout: 60000,
+      });
+    } catch (err) {
+      const errDetails = err.response?.data ? JSON.stringify(err.response.data) : err.message;
+      logger.error(`Magica start run failed for node '${nodeType}': ${errDetails}`);
+      throw new Error(`Magica API error (${err.response?.status || 500}): ${errDetails}`);
+    }
 
     const runId = startRes.data?.runId || startRes.data?.id;
     if (!runId) {
@@ -196,6 +203,25 @@ class MagicaService {
     }
 
     throw new Error(`Magica run ${runId} timed out after ${this.timeoutMs / 1000}s`);
+  }
+
+  _normalizeVideoResolution(resolution) {
+    const clean = (resolution || "").trim().toLowerCase();
+    if (clean === "480p" || clean === "854x480" || clean === "480") {
+      return "480p";
+    }
+    // "720p", "1280x720", "1080p", "1920x1080" etc. Map safely to "720p" supported by fast video node
+    return "720p";
+  }
+
+  _normalizeVideoDuration(duration) {
+    const num = Number(duration);
+    if ([5, 10, 15].includes(num)) {
+      return num;
+    }
+    if (num <= 5) return 5;
+    if (num >= 15) return 15;
+    return 10;
   }
 
   _normalizeImageSize(resolution, aspectRatio) {

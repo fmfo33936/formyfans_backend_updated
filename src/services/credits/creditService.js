@@ -245,7 +245,11 @@ class CreditService {
     }
 
     if (magicaUsage) {
-      const providerCredits = Number(magicaUsage.creditUsed || 0);
+      let providerCredits = Number(magicaUsage.creditUsed || 0);
+      // Magica API returns creditUsed in micro-units when > 1000 (e.g. 1,209,500 = ~1.2095 credits/USD)
+      if (providerCredits > 1000) {
+        providerCredits = providerCredits / 1000000;
+      }
       magicaCredits = providerCredits * pricing.magicaCreditMultiplier * pricing.profitMarginMultiplier;
     }
 

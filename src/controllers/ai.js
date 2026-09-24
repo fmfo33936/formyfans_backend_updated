@@ -220,6 +220,12 @@ const createGeneration = async (req, res, next) => {
     if ((type === "IMAGE" || type === "VIDEO") && (!validatedData.prompt && !validatedData.refinedPrompt && !validatedData.promptId)) {
       return errorHelper(res, null, "prompt, refinedPrompt, or promptId is required", 400);
     }
+    if ((type === "VIDEO" || type === "VIDEO_EDIT") && validatedData.resolution && !["480p", "720p"].includes(validatedData.resolution)) {
+      return errorHelper(res, null, `Invalid resolution '${validatedData.resolution}' for video. Magica only accepts exact values: '480p' or '720p'`, 400);
+    }
+    if (type === "IMAGE" && validatedData.duration) {
+      return errorHelper(res, null, "duration parameter is not applicable for IMAGE generation", 400);
+    }
 
     const result = await aiGenerationService.createGeneration({
       userId: req.user._id,

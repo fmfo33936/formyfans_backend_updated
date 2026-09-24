@@ -1,4 +1,4 @@
-const { PutObjectCommand, GetObjectCommand } = require("@aws-sdk/client-s3");
+const { PutObjectCommand, GetObjectCommand, DeleteObjectCommand } = require("@aws-sdk/client-s3");
 const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
 const { v4: uuidv4 } = require("uuid");
 const axios = require("axios");
@@ -9,6 +9,33 @@ class S3MediaService {
   constructor() {
     this.bucket = process.env.AWS_BUCKET_NAME;
     this.region = process.env.AWS_REGION || "eu-north-1";
+  }
+
+  /**
+   * Deletes a file from S3 bucket.
+   */
+  async deleteFile(fileKey) {
+    if (!this.bucket || !fileKey) return false;
+    try {
+      // If it's a full URL, extract the key if possible
+      let cleanKey = fileKey;
+      if (cleanKey.startsWith("http://") || cleanKey.startsWith("https://")) {
+        const urlObj = new URL(cleanKey);
+        cleanKey = urlObj.pathname.replace(/^\/+/, "");
+      }
+
+      const command = new DeleteObjectCommand({
+        Bucket: this.bucket,
+        Key: cleanKey,
+      });
+
+      await s3Client.send(command);
+      logger.info(`Deleted file from S3: ${cleanKey}`);
+      return true;
+    } catch (err) {
+      logger.warn(`Failed to delete S3 file ${fileKey}: ${err.message}`);
+      return false;
+    }
   }
 
   /**

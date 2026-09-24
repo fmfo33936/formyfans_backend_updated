@@ -206,22 +206,19 @@ class MagicaService {
   }
 
   _normalizeVideoResolution(resolution) {
-    const clean = (resolution || "").trim().toLowerCase();
-    if (clean === "480p" || clean === "854x480" || clean === "480") {
-      return "480p";
+    const clean = (resolution || "720p").trim().toLowerCase();
+    if (!["480p", "720p"].includes(clean)) {
+      throw new Error(`Invalid video resolution '${resolution}'. Magica video only supports exact values: '480p' or '720p'.`);
     }
-    // "720p", "1280x720", "1080p", "1920x1080" etc. Map safely to "720p" supported by fast video node
-    return "720p";
+    return clean;
   }
 
   _normalizeVideoDuration(duration) {
-    const num = Number(duration);
-    if ([5, 10, 15].includes(num)) {
-      return num;
+    const num = Number(duration || 10);
+    if (![5, 10, 15].includes(num)) {
+      throw new Error(`Invalid video duration '${duration}'. Magica video only supports exact values: 5, 10, or 15 seconds.`);
     }
-    if (num <= 5) return 5;
-    if (num >= 15) return 15;
-    return 10;
+    return num;
   }
 
   _normalizeImageSize(resolution, aspectRatio) {

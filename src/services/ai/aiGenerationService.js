@@ -10,6 +10,8 @@ class AIGenerationService {
    */
   async createGeneration({
     userId,
+    contentId,
+    replaceOriginal = false,
     type,
     prompt,
     refinedPrompt,
@@ -22,6 +24,18 @@ class AIGenerationService {
     imageReference,
     videoModificationPrompt,
   }) {
+    // Strict exact validation (no loose normalization)
+    const isVideo = type === "VIDEO" || type === "VIDEO_EDIT";
+    if (isVideo && resolution && !["480p", "720p"].includes(resolution)) {
+      throw new Error(`Invalid resolution '${resolution}' for video. Magica only accepts exact values: '480p' or '720p'.`);
+    }
+    if (isVideo && duration && ![5, 10, 15].includes(Number(duration))) {
+      throw new Error(`Invalid duration '${duration}' for video. Magica only accepts exact values: 5, 10, or 15 seconds.`);
+    }
+    if (type === "IMAGE" && resolution && !["480p", "720p", "1080p"].includes(resolution)) {
+      throw new Error(`Invalid resolution '${resolution}' for image. Supported values: '480p', '720p', '1080p'.`);
+    }
+
     const requiredReservation = await creditService.getRequiredReservationCredits(type);
 
     // 1. Verify credit availability
@@ -52,8 +66,8 @@ class AIGenerationService {
     const settings = {
       resolution: resolution || (type === "IMAGE" ? "1080p" : "720p"),
       aspectRatio: aspectRatio || "16:9",
-      duration: duration ? Number(duration) : 10,
-      audio: audio !== undefined ? Boolean(audio) : true,
+      duration: isVideo ? Number(duration || 10) : undefined,
+      audio: isVideo ? (audio !== undefined ? Boolean(audio) : true) : undefined,
     };
 
     const references = {
@@ -63,15 +77,42 @@ class AIGenerationService {
     };
 
     // 3. Create or link AIContent parent project
-    const content = await AIContent.create({
-      userId,
-      title: (finalPrompt || "AI Content").substring(0, 50),
-      type,
-      prompt: finalPrompt,
-      currentRefinedPrompt: finalRefinedPrompt || undefined,
-      settings,
-      references,
-    });
+    let content = null;
+    let oldS3Key = null;
+
+    if (contentId) {
+      content = await AIContent.findOne({ _id: contentId, userId });
+    }
+    // Auto-detect existing project if videoReference matches an existing project
+    if (!content && videoReference) {
+      content = await AIContent.findOne({
+        userId,
+        $or: [{ s3Key: videoReference }, { mediaUrl: videoReference }],
+      });
+    }
+
+    if (content) {
+      oldS3Key = content.s3Key;
+      content.generationsCount = (content.generationsCount || 1) + 1;
+      content.type = type;
+      if (finalPrompt) content.prompt = finalPrompt;
+      if (finalRefinedPrompt) content.currentRefinedPrompt = finalRefinedPrompt;
+      content.settings = settings;
+      content.references = references;
+      content.status = "PROCESSING";
+      await content.save();
+    } else {
+      content = await AIContent.create({
+        userId,
+        title: (finalPrompt || "AI Content").substring(0, 50),
+        type,
+        prompt: finalPrompt,
+        currentRefinedPrompt: finalRefinedPrompt || undefined,
+        settings,
+        references,
+        status: "PROCESSING",
+      });
+    }
 
     // 4. Create AIGeneration record
     const generation = await AIGeneration.create({
@@ -85,10 +126,13 @@ class AIGenerationService {
       reservedCredits: requiredReservation,
       settings,
       references,
+      metadata: {
+        replaceOriginal: Boolean(replaceOriginal),
+        oldS3Key: oldS3Key || undefined,
+      },
     });
 
     content.latestGenerationId = generation._id;
-    content.generationsCount = 1;
     await content.save();
 
     // 5. Reserve credits atomically

@@ -263,8 +263,16 @@ class AIJobQueue {
         await AIContent.findByIdAndUpdate(generation.contentId, {
           mediaUrl: finalMediaUrl,
           s3Key: finalS3Key,
+          latestGenerationId: generation._id,
           status: "COMPLETED",
         });
+
+        // If replacing original video, clean up old S3 file
+        const oldKey = generation.metadata?.oldS3Key;
+        if (generation.metadata?.replaceOriginal && oldKey && oldKey !== finalS3Key) {
+          logger.info(`Replacing original video: deleting old S3 object ${oldKey}`);
+          await s3MediaService.deleteFile(oldKey);
+        }
       }
 
       // Push real-time completion event to specific user via Socket.io

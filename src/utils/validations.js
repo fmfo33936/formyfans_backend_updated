@@ -702,18 +702,25 @@ const refinePromptSchema = Joi.object({
   type: Joi.string().valid("IMAGE", "VIDEO", "VIDEO_EDIT").default("IMAGE"),
   prompt: Joi.string().trim().required(),
   style: Joi.string().trim().allow("").optional(),
-  settings: Joi.object().optional(),
+  settings: Joi.object({
+    resolution: Joi.string().trim().valid("480p", "720p", "1080p").optional(),
+    aspectRatio: Joi.string().trim().valid("1:1", "4:3", "3:4", "16:9", "9:16").optional(),
+    duration: Joi.number().valid(5, 10, 15).optional(),
+    audio: Joi.boolean().optional(),
+  }).optional(),
   videoModificationPrompt: Joi.string().trim().allow("").optional(),
 }).unknown(false);
 
 const aiGenerationSchema = Joi.object({
   type: Joi.string().valid("IMAGE", "VIDEO", "VIDEO_EDIT").optional(),
+  contentId: Joi.string().trim().optional(),
+  replaceOriginal: Joi.boolean().optional(),
   prompt: Joi.string().trim().allow("").optional(),
   refinedPrompt: Joi.string().trim().allow("").optional(),
   promptId: Joi.string().trim().optional(),
-  resolution: Joi.string().trim().valid("480p", "720p", "1080p", "1920x1080", "1280x720").optional(),
+  resolution: Joi.string().trim().valid("480p", "720p", "1080p").optional(),
   aspectRatio: Joi.string().trim().valid("1:1", "4:3", "3:4", "16:9", "9:16").optional(),
-  duration: Joi.number().valid(5, 10, 15, 20, 30).optional(),
+  duration: Joi.number().valid(5, 10, 15).optional(),
   audio: Joi.boolean().optional(),
   videoReference: Joi.string().trim().optional(),
   imageReference: Joi.string().trim().allow(null, "").optional(),

@@ -15,7 +15,7 @@ const creditPricingSchema = new mongoose.Schema(
     pricePerCredit: {
       type: Number,
       required: true,
-      default: 0.1999, // 100 credits = $19.99
+      default: 0.1, // 100 credits = $10.00 (1 credit = $0.10)
       min: 0.001,
     },
     defaultCredits: {
@@ -38,49 +38,50 @@ const creditPricingSchema = new mongoose.Schema(
         "AI Video Generation",
         "AI Image Generation",
         "AI Video Editing",
+        "Prompt refinements",
       ],
     },
     // Model usage platform credit conversions
     openaiInputCreditsPer1kTokens: {
       type: Number,
       required: true,
-      default: 1,
+      default: 0.5,
       min: 0.1,
     },
     openaiOutputCreditsPer1kTokens: {
       type: Number,
       required: true,
-      default: 3,
+      default: 1.0,
       min: 0.1,
     },
     magicaCreditMultiplier: {
       type: Number,
       required: true,
-      default: 50,
+      default: 10,
       min: 1,
     },
     profitMarginMultiplier: {
       type: Number,
       required: true,
-      default: 1.3,
+      default: 2.0, // 100% profit margin / 2x markup ($0.50 cost -> $1.00 charge)
       min: 1.0,
     },
     imageReservationCredits: {
       type: Number,
       required: true,
-      default: 10,
+      default: 1,
       min: 1,
     },
     videoReservationCredits: {
       type: Number,
       required: true,
-      default: 50,
+      default: 5,
       min: 1,
     },
     videoEditReservationCredits: {
       type: Number,
       required: true,
-      default: 60,
+      default: 6,
       min: 1,
     },
     isActive: {
@@ -99,9 +100,16 @@ creditPricingSchema.statics.getActivePricing = async function () {
   if (!pricing) {
     pricing = await this.create({
       planName: "Unlock AI Premium Feature",
-      pricePerCredit: 0.1999,
+      pricePerCredit: 0.1,
       defaultCredits: 100,
       minCredits: 10,
+      profitMarginMultiplier: 2.0,
+      magicaCreditMultiplier: 10,
+      videoReservationCredits: 5,
+      videoEditReservationCredits: 6,
+      imageReservationCredits: 1,
+      openaiInputCreditsPer1kTokens: 0.5,
+      openaiOutputCreditsPer1kTokens: 1.0,
       isActive: true,
     });
   }

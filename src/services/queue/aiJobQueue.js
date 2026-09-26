@@ -291,7 +291,8 @@ class AIJobQueue {
 
       logger.info(`AI Generation ${generation._id} (${type}) completed. Direct S3 URL: ${finalMediaUrl}`);
     } catch (error) {
-      logger.error(`AI Generation ${generation._id} failed: ${error.message}`);
+      const exactErrorMessage = error.message || "Generation processing failed";
+      logger.error(`AI Generation ${generation._id} failed: ${exactErrorMessage}`);
 
       // Auto-refund/release reserved credits
       try {
@@ -299,7 +300,7 @@ class AIJobQueue {
           userId,
           reservedCredits,
           generation._id,
-          error.message || "Generation processing failed"
+          exactErrorMessage
         );
       } catch (refundErr) {
         logger.error(`Failed to refund credits for generation ${generation._id}: ${refundErr.message}`);
@@ -308,7 +309,7 @@ class AIJobQueue {
       const typeLabel = type === "VIDEO_EDIT" ? "edited video" : type.toLowerCase();
       generation.status = "FAILED";
       generation.progress = 0;
-      generation.errorMessage = `We couldn't generate your ${typeLabel} right now. All ${reservedCredits} reserved credits have been refunded to your account.`;
+      generation.errorMessage = exactErrorMessage;
       await generation.save();
 
       if (generation.contentId) {
@@ -325,7 +326,8 @@ class AIJobQueue {
         status: "failed",
         progress: 0,
         creditsRefunded: reservedCredits,
-        message: generation.errorMessage,
+        error: exactErrorMessage,
+        message: exactErrorMessage,
       });
     }
   }

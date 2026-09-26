@@ -195,6 +195,7 @@ class AIGenerationService {
       creditsDeducted: isCompleted ? generation.finalCreditsDeducted : 0,
       creditsReserved: isProcessing ? generation.reservedCredits : 0,
       message: friendlyMessage,
+      error: isFailed ? (generation.errorMessage || friendlyMessage) : null,
       createdAt: generation.createdAt,
       completedAt: generation.completedAt,
     };
@@ -229,6 +230,7 @@ class AIGenerationService {
         s3Key: isCompleted ? gen.resultS3Key : null,
         prompt: gen.refinedPrompt || gen.prompt,
         creditsDeducted: isCompleted ? gen.finalCreditsDeducted : 0,
+        error: isFailed ? (gen.errorMessage || null) : null,
         createdAt: gen.createdAt,
         completedAt: gen.completedAt,
       };

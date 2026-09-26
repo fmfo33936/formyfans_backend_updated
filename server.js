@@ -2,16 +2,29 @@
 // dns.setServers(["1.1.1.1"]);
 
 
+const fs = require("fs");
 const dotenv = require("dotenv");
 const path = require("path");
 
 // ENV configuration
-const envFile =
+const requestedEnvFile =
   process.env.NODE_ENV === "production"
     ? ".env.production"
     : ".env.development";
 
-dotenv.config({ path: path.resolve(__dirname, envFile) });
+const requestedEnvPath = path.resolve(__dirname, requestedEnvFile);
+const devEnvPath = path.resolve(__dirname, ".env.development");
+const defaultEnvPath = path.resolve(__dirname, ".env");
+
+if (fs.existsSync(requestedEnvPath)) {
+  dotenv.config({ path: requestedEnvPath });
+} else if (fs.existsSync(devEnvPath)) {
+  dotenv.config({ path: devEnvPath });
+} else if (fs.existsSync(defaultEnvPath)) {
+  dotenv.config({ path: defaultEnvPath });
+} else {
+  dotenv.config();
+}
 
 const mongoose = require("mongoose");
 const app = require("./src/app");

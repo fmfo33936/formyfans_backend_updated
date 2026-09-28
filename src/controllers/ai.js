@@ -3,6 +3,7 @@ const s3MediaService = require("../services/s3/s3MediaService");
 const aiGenerationService = require("../services/ai/aiGenerationService");
 const openaiService = require("../services/ai/openaiService");
 const AIPrompt = require("../models/AIPrompt");
+const AIUsage = require("../models/AIUsage");
 const { schemaValidator } = require("../utils/validator");
 const {
   presignUploadSchema,
@@ -21,7 +22,7 @@ const refinePrompt = async (req, res, next) => {
   try {
     const [error, validatedData] = schemaValidator(req.body, refinePromptSchema);
     if (error) {
-      return errorHelper(res, null, error, 400);
+      return errorHelper(res, null, "Please check your details and try again.", 400);
     }
 
     const { type, prompt, style, settings = {}, videoModificationPrompt } = validatedData;
@@ -41,6 +42,20 @@ const refinePrompt = async (req, res, next) => {
       settings,
     });
 
+    if (promptResult.usage?.totalTokens > 0) {
+      await AIUsage.create({
+        userId: req.user._id,
+        provider: "openai",
+        model: promptResult.model,
+        inputTokens: promptResult.usage.inputTokens,
+        outputTokens: promptResult.usage.outputTokens,
+        totalTokens: promptResult.usage.totalTokens,
+        providerCost: promptResult.providerCost,
+        platformCredits: 0,
+        rawResponse: { promptId: savedPrompt._id },
+      });
+    }
+
     return successHelper(
       res,
       {
@@ -51,7 +66,7 @@ const refinePrompt = async (req, res, next) => {
         style: savedPrompt.style,
         createdAt: savedPrompt.createdAt,
       },
-      "Prompt refined successfully! You can now review, edit, or proceed to generate.",
+      "Your idea is ready! Review it, make changes, or start creating.",
       200
     );
   } catch (err) {
@@ -67,7 +82,7 @@ const getRefinedPrompt = async (req, res, next) => {
   try {
     const { id } = req.params;
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      return errorHelper(res, null, "Invalid prompt ID", 400);
+      return errorHelper(res, null, "We couldn't find that idea. Please choose it again.", 400);
     }
 
     const promptDoc = await AIPrompt.findOne({
@@ -76,10 +91,10 @@ const getRefinedPrompt = async (req, res, next) => {
     });
 
     if (!promptDoc) {
-      return errorHelper(res, null, "Refined prompt not found", 404);
+      return errorHelper(res, null, "We couldn't find that idea. You can create a new one.", 404);
     }
 
-    return successHelper(res, promptDoc, "Refined prompt retrieved successfully", 200);
+    return successHelper(res, promptDoc, "Here's your saved idea.", 200);
   } catch (err) {
     return next(err);
   }
@@ -115,7 +130,7 @@ const listRefinedPrompts = async (req, res, next) => {
           totalPages: Math.ceil(totalCount / limit),
         },
       },
-      "Refined prompts retrieved successfully",
+      "Here are your saved ideas.",
       200
     );
   } catch (err) {
@@ -131,7 +146,7 @@ const presignUpload = async (req, res, next) => {
   try {
     const [error, validatedData] = schemaValidator(req.body, presignUploadSchema);
     if (error) {
-      return errorHelper(res, null, error, 400);
+      return errorHelper(res, null, "Please check the file details and try again.", 400);
     }
 
     const { fileName, fileType } = validatedData;
@@ -141,7 +156,7 @@ const presignUpload = async (req, res, next) => {
       fileType,
     });
 
-    return successHelper(res, result, "Presigned upload URL generated successfully. Use PUT with binary body to upload.", 200);
+    return successHelper(res, result, "Your file is ready to upload.", 200);
   } catch (err) {
     return next(err);
   }
@@ -155,7 +170,7 @@ const directUpload = async (req, res, next) => {
   try {
     const [error, validatedData] = schemaValidator(req.body, directUploadSchema);
     if (error) {
-      return errorHelper(res, null, error, 400);
+      return errorHelper(res, null, "Please check the file details and try again.", 400);
     }
 
     const { fileName, fileType, base64Data } = validatedData;
@@ -166,7 +181,7 @@ const directUpload = async (req, res, next) => {
       base64Data,
     });
 
-    return successHelper(res, result, "Media uploaded directly to S3 successfully!", 200);
+    return successHelper(res, result, "Your file has been uploaded and is ready to use.", 200);
   } catch (err) {
     return next(err);
   }
@@ -207,7 +222,7 @@ const createGeneration = async (req, res, next) => {
   try {
     const [error, validatedData] = schemaValidator(req.body, aiGenerationSchema);
     if (error) {
-      return errorHelper(res, null, error, 400);
+      return errorHelper(res, null, "Please check your creation details and try again.", 400);
     }
 
     const type = validatedData.type || req.body.type || "IMAGE";
@@ -215,16 +230,16 @@ const createGeneration = async (req, res, next) => {
 
     // Type-specific sanity checks
     if (type === "VIDEO_EDIT" && !validatedData.videoReference) {
-      return errorHelper(res, null, "videoReference (S3 key) is required for VIDEO_EDIT generations", 400);
+      return errorHelper(res, null, "Please add the video you want to edit.", 400);
     }
     if ((type === "IMAGE" || type === "VIDEO") && (!validatedData.prompt && !validatedData.refinedPrompt && !validatedData.promptId)) {
-      return errorHelper(res, null, "prompt, refinedPrompt, or promptId is required", 400);
+      return errorHelper(res, null, "Tell us what you'd like to create, then try again.", 400);
     }
     if ((type === "VIDEO" || type === "VIDEO_EDIT") && validatedData.resolution && !["480p", "720p"].includes(validatedData.resolution)) {
-      return errorHelper(res, null, `Invalid resolution '${validatedData.resolution}' for video. Magica only accepts exact values: '480p' or '720p'`, 400);
+      return errorHelper(res, null, "Please choose 480p or 720p for your video.", 400);
     }
     if (type === "IMAGE" && validatedData.duration) {
-      return errorHelper(res, null, "duration parameter is not applicable for IMAGE generation", 400);
+      return errorHelper(res, null, "Images don't need a video length. Please remove that option and try again.", 400);
     }
 
     const result = await aiGenerationService.createGeneration({
@@ -232,10 +247,10 @@ const createGeneration = async (req, res, next) => {
       ...validatedData,
     });
 
-    return successHelper(res, result, `AI ${type.toLowerCase()} generation started. Status is processing.`, 202);
+    return successHelper(res, result, result.message, 202);
   } catch (err) {
     if (err.message && err.message.includes("Insufficient credits")) {
-      return errorHelper(res, null, err.message, 402);
+      return errorHelper(res, null, "You need more credits to create this. Please add credits and try again.", 402);
     }
     return next(err);
   }
@@ -249,14 +264,14 @@ const getGeneration = async (req, res, next) => {
   try {
     const { id } = req.params;
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      return errorHelper(res, null, "Invalid generation ID", 400);
+      return errorHelper(res, null, "We couldn't find that creation. Please open it again.", 400);
     }
 
     const generation = await aiGenerationService.getGeneration(req.user._id, id);
     return successHelper(res, generation, generation.message, 200);
   } catch (err) {
     if (err.message && err.message.includes("not found")) {
-      return errorHelper(res, null, err.message, 404);
+      return errorHelper(res, null, "We couldn't find that creation in your account.", 404);
     }
     return next(err);
   }
@@ -278,7 +293,7 @@ const listGenerations = async (req, res, next) => {
       type,
     });
 
-    return successHelper(res, result, "AI Generations retrieved successfully", 200);
+    return successHelper(res, result, "Here are your creations.", 200);
   } catch (err) {
     return next(err);
   }

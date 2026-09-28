@@ -30,7 +30,7 @@ const getBalance = async (req, res, next) => {
         totalPurchased: userCredit.totalPurchased,
         totalSpent: userCredit.totalSpent,
       },
-      "Credit balance fetched successfully",
+      "Here's your current credit balance.",
       200
     );
   } catch (err) {
@@ -69,7 +69,7 @@ const getTransactions = async (req, res, next) => {
           totalPages: Math.ceil(totalCount / limit),
         },
       },
-      "Credit transactions retrieved",
+      "Here's your credit activity.",
       200
     );
   } catch (err) {
@@ -84,7 +84,7 @@ const getTransactions = async (req, res, next) => {
 const getPricing = async (req, res, next) => {
   try {
     const pricing = await CreditPricing.getActivePricing();
-    return successHelper(res, pricing, "Credit pricing retrieved", 200);
+    return successHelper(res, pricing, "Here are the current credit prices.", 200);
   } catch (err) {
     return next(err);
   }
@@ -113,7 +113,7 @@ const calculatePrice = async (req, res, next) => {
         pricePerCredit: pricing.pricePerCredit,
         planName: pricing.planName,
       },
-      "Credit price calculated successfully",
+      "Here's how much those credits cost.",
       200
     );
   } catch (err) {
@@ -140,7 +140,7 @@ const createPurchasePaymentIntent = async (req, res, next) => {
       return errorHelper(
         res,
         null,
-        `Minimum credit purchase is ${pricing.minCredits} credits`,
+        `Please choose at least ${pricing.minCredits} credits.`,
         400
       );
     }
@@ -150,7 +150,7 @@ const createPurchasePaymentIntent = async (req, res, next) => {
     const finalAmountCents = Math.round(priceUsd * 100);
 
     if (finalAmountCents < 50) {
-      return errorHelper(res, null, "Minimum charge amount is $0.50", 400);
+      return errorHelper(res, null, "Please choose enough credits to reach the $0.50 minimum.", 400);
     }
 
     const userId = req.user._id;
@@ -261,7 +261,7 @@ const createPurchasePaymentIntent = async (req, res, next) => {
           availableBalance: updatedCredit.availableBalance,
           planName: pricing.planName,
         },
-        "Payment succeeded directly and credits added to account!",
+        "Payment complete! Your credits are ready to use.",
         200
       );
     }
@@ -276,7 +276,7 @@ const createPurchasePaymentIntent = async (req, res, next) => {
         priceUsd,
         planName: pricing.planName,
       },
-      "PaymentIntent created for AI credit purchase",
+      "Your payment is ready. Complete it to add your credits.",
       201
     );
   } catch (err) {
@@ -301,7 +301,7 @@ const verifyPayment = async (req, res, next) => {
 
     let paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
     if (!paymentIntent) {
-      return errorHelper(res, null, "Payment not found", 404);
+      return errorHelper(res, null, "We couldn't find that payment. Please check it and try again.", 404);
     }
 
     // If status is not succeeded yet, attempt confirmation if customer has a default payment method or if one was supplied
@@ -334,7 +334,7 @@ const verifyPayment = async (req, res, next) => {
       return errorHelper(
         res,
         null,
-        `Payment has not succeeded. Current status: ${paymentIntent.status}`,
+        "Your payment isn't complete yet. Please finish it and try again.",
         400
       );
     }
@@ -342,12 +342,12 @@ const verifyPayment = async (req, res, next) => {
     // Verify ownership
     const metadataUserId = paymentIntent.metadata?.userId;
     if (metadataUserId && metadataUserId !== req.user._id.toString()) {
-      return errorHelper(res, null, "Payment does not belong to this user", 403);
+      return errorHelper(res, null, "This payment isn't linked to your account.", 403);
     }
 
     const creditsToAdd = Number(paymentIntent.metadata?.creditsToBuy) || 0;
     if (creditsToAdd <= 0) {
-      return errorHelper(res, null, "Invalid credit amount on payment metadata", 400);
+      return errorHelper(res, null, "We couldn't confirm the credits for this payment. Please contact support.", 400);
     }
 
     // Safely and idempotently credit balance
@@ -365,7 +365,7 @@ const verifyPayment = async (req, res, next) => {
         newBalance: updatedCredit.balance,
         availableBalance: updatedCredit.availableBalance,
       },
-      "Credits successfully added to your account",
+      "Your credits are ready to use!",
       200
     );
   } catch (err) {
@@ -403,7 +403,7 @@ const getPaymentHistory = async (req, res, next) => {
           totalPages: Math.ceil(totalCount / limit),
         },
       },
-      "AI payment history retrieved",
+      "Here's your payment history.",
       200
     );
   } catch (err) {
@@ -478,4 +478,3 @@ module.exports = {
   getPaymentHistory,
   updatePricing,
 };
-

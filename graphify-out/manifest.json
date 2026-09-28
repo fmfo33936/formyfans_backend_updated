@@ -582,9 +582,9 @@
     "semantic_hash": ""
   },
   "server.js": {
-    "mtime": 1789617848.7839546,
-    "seen": 1790390745.1557178,
-    "ast_hash": "659d8878abe5a1581072b1dc3553b50b",
+    "mtime": 1790573178.2604716,
+    "seen": 1790573297.8023977,
+    "ast_hash": "d702ce790e3fd9b48e12c9deb12181f4",
     "semantic_hash": ""
   },
   "src/app.js": {
@@ -2400,15 +2400,15 @@
     "semantic_hash": ""
   },
   "src/controllers/ai.js": {
-    "mtime": 1790241752.72512,
-    "seen": 1790390745.155725,
-    "ast_hash": "a3ab915db7f86e505a34c5d7820a25b3",
+    "mtime": 1790573680.0996566,
+    "seen": 1790573709.3078868,
+    "ast_hash": "7a318e7d69518852ff3895d309affbd6",
     "semantic_hash": ""
   },
   "src/controllers/credits.js": {
-    "mtime": 1790146011.2164948,
-    "seen": 1790390745.155737,
-    "ast_hash": "6f068c61dfc55cb4db3bd9b3389d2b85",
+    "mtime": 1790573627.547923,
+    "seen": 1790573674.4762838,
+    "ast_hash": "936a59bf64094bd202acdf5098b5d3a1",
     "semantic_hash": ""
   },
   "src/models/AIContent.js": {
@@ -2436,15 +2436,15 @@
     "semantic_hash": ""
   },
   "src/models/AIUsage.js": {
-    "mtime": 1790057497.279138,
-    "seen": 1790390745.155766,
-    "ast_hash": "9a3891f269d89143a4acc6b823cc8018",
+    "mtime": 1790573167.472438,
+    "seen": 1790573297.8024647,
+    "ast_hash": "fb6d15ab5678874fa3761092c4b017f5",
     "semantic_hash": ""
   },
   "src/models/CreditPricing.js": {
-    "mtime": 1790066547.4118166,
-    "seen": 1790390745.155767,
-    "ast_hash": "9fc06471f0352db761e92075e0cc89e0",
+    "mtime": 1790394828.6975496,
+    "seen": 1790573297.8024654,
+    "ast_hash": "67cb27608de00df268c1834878a5986c",
     "semantic_hash": ""
   },
   "src/models/CreditTransaction.js": {
@@ -2472,39 +2472,45 @@
     "semantic_hash": ""
   },
   "src/services/ai/aiGenerationService.js": {
-    "mtime": 1790241833.0618436,
-    "seen": 1790390745.1558306,
-    "ast_hash": "2c4973d73f3f7621d29974512a1dd5aa",
+    "mtime": 1790573640.635987,
+    "seen": 1790573674.4764848,
+    "ast_hash": "e390b95380755543d996dcb7423dc09c",
     "semantic_hash": ""
   },
   "src/services/ai/magicaService.js": {
-    "mtime": 1790245506.5945065,
-    "seen": 1790390745.1558313,
-    "ast_hash": "61717f7966bb18dc4370d4cb06124d78",
+    "mtime": 1790417142.0083737,
+    "seen": 1790573297.8025417,
+    "ast_hash": "3fd5223546302221125efb76f492c9b0",
     "semantic_hash": ""
   },
   "src/services/ai/openaiService.js": {
-    "mtime": 1790057526.3840556,
-    "seen": 1790390745.1558325,
-    "ast_hash": "b25e82977746ac51801d771c950a16d5",
+    "mtime": 1790573170.768859,
+    "seen": 1790573297.802543,
+    "ast_hash": "faaaa544251867e2ac042222323ac8bf",
     "semantic_hash": ""
   },
   "src/services/credits/creditService.js": {
-    "mtime": 1790240640.1691084,
-    "seen": 1790390745.1558335,
-    "ast_hash": "aeab408bd13a08875d1f9b42af3c8458",
+    "mtime": 1790573193.0243146,
+    "seen": 1790573297.8025439,
+    "ast_hash": "629d494c9ef395284536b56f1846387c",
     "semantic_hash": ""
   },
   "src/services/queue/aiJobQueue.js": {
-    "mtime": 1790240666.8847744,
-    "seen": 1790390745.1558347,
-    "ast_hash": "94cf9046a66897f2ea8d1fb474380489",
+    "mtime": 1790573621.0092902,
+    "seen": 1790573674.4764962,
+    "ast_hash": "b7f0d18b75a8c37d92ef2c8c2703f7d9",
     "semantic_hash": ""
   },
   "src/services/s3/s3MediaService.js": {
-    "mtime": 1790240611.3085344,
-    "seen": 1790390745.1558354,
-    "ast_hash": "fe739395d3ef873f379315a74b26e192",
+    "mtime": 1790573162.9823332,
+    "seen": 1790573297.802546,
+    "ast_hash": "f1f1b060e9162a20017b64245a7680dd",
+    "semantic_hash": ""
+  },
+  "src/services/ai/generationMessages.js": {
+    "mtime": 1790573620.5280607,
+    "seen": 1790573674.4764872,
+    "ast_hash": "f4716cc006caa575a0d5b1f39c9056b9",
     "semantic_hash": ""
   }
 }

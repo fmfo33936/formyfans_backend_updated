@@ -34,6 +34,7 @@ const http = require("http");
 const { initializeSocket } = require("./src/socket/socket");
 const startScheduledPostCron = require("./src/jobs/publishScheduledPosts");
 const startExpireBoostsCron = require("./src/jobs/expireBoosts");
+const aiJobQueue = require("./src/services/queue/aiJobQueue");
 
 const PORT = process.env.PORT || 3000;
 
@@ -60,6 +61,8 @@ const startServer = async () => {
     try {
       await mongoose.connect(mongoUri);
       logger.info("MongoDB connected successfully.");
+
+      await aiJobQueue.recoverOnStartup();
 
       startScheduledPostCron();
       startExpireBoostsCron();

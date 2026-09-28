@@ -3,6 +3,7 @@ const AIGeneration = require("../../models/AIGeneration");
 const AIPrompt = require("../../models/AIPrompt");
 const creditService = require("../credits/creditService");
 const aiJobQueue = require("../queue/aiJobQueue");
+const generationMessages = require("./generationMessages");
 
 class AIGenerationService {
   /**
@@ -136,14 +137,24 @@ class AIGenerationService {
     await content.save();
 
     // 5. Reserve credits atomically
-    await creditService.reserveCredits(userId, requiredReservation, generation._id);
+    try {
+      await creditService.reserveCredits(userId, requiredReservation, generation._id);
+    } catch (error) {
+      generation.status = "FAILED";
+      generation.progress = 0;
+      generation.errorMessage = error.message;
+      await generation.save();
+      await AIContent.updateOne(
+        { _id: content._id, latestGenerationId: generation._id },
+        { $set: { status: "FAILED" } }
+      );
+      throw error;
+    }
 
     // 6. Enqueue background execution
     aiJobQueue.enqueue(generation._id);
 
     const estimatedWait = type === "IMAGE" ? 45 : 65;
-    const typeLabel = type === "VIDEO_EDIT" ? "edited video" : type.toLowerCase();
-
     return {
       generationId: generation._id,
       contentId: content._id,
@@ -152,7 +163,7 @@ class AIGenerationService {
       progress: 5,
       reservedCredits: generation.reservedCredits,
       prompt: finalRefinedPrompt || finalPrompt,
-      message: `Your ${typeLabel} is being created by AI. Please check back shortly.`,
+      message: generationMessages.forType(type).start,
       estimatedWaitSeconds: estimatedWait,
       createdAt: generation.createdAt,
     };
@@ -174,13 +185,11 @@ class AIGenerationService {
     const isCompleted = generation.status === "COMPLETED";
     const isFailed = generation.status === "FAILED";
     const isProcessing = generation.status === "PROCESSING" || generation.status === "PENDING";
-    const typeLabel = generation.type === "VIDEO_EDIT" ? "edited video" : generation.type.toLowerCase();
-
-    let friendlyMessage = `Your ${typeLabel} is currently processing. Please check back in a few seconds.`;
+    let friendlyMessage = generationMessages.forProgress(generation.type, generation.progress);
     if (isCompleted) {
-      friendlyMessage = `Your AI ${typeLabel} is ready!`;
+      friendlyMessage = generationMessages.forType(generation.type).done;
     } else if (isFailed) {
-      friendlyMessage = generation.errorMessage || `We couldn't generate your ${typeLabel} right now. Your credits have been refunded.`;
+      friendlyMessage = generationMessages.forType(generation.type).failed;
     }
 
     return {
@@ -195,7 +204,7 @@ class AIGenerationService {
       creditsDeducted: isCompleted ? generation.finalCreditsDeducted : 0,
       creditsReserved: isProcessing ? generation.reservedCredits : 0,
       message: friendlyMessage,
-      error: isFailed ? (generation.errorMessage || friendlyMessage) : null,
+      error: isFailed ? friendlyMessage : null,
       createdAt: generation.createdAt,
       completedAt: generation.completedAt,
     };
@@ -230,7 +239,7 @@ class AIGenerationService {
         s3Key: isCompleted ? gen.resultS3Key : null,
         prompt: gen.refinedPrompt || gen.prompt,
         creditsDeducted: isCompleted ? gen.finalCreditsDeducted : 0,
-        error: isFailed ? (gen.errorMessage || null) : null,
+        error: isFailed ? generationMessages.forType(gen.type).failed : null,
         createdAt: gen.createdAt,
         completedAt: gen.completedAt,
       };

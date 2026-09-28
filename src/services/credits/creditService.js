@@ -74,34 +74,36 @@ class CreditService {
    * Finalizes the credit deduction after a successful generation.
    * Unreserves reservedAmount and deducts actualAmount from balance.
    */
-  async finalizeDeduction(userId, reservedAmount, actualAmount, generationId, description = "AI Generation Charge") {
-    const current = await this.getOrCreateUserCredit(userId);
-    const balanceBefore = current.balance;
-
-    const finalBalance = Math.max(0, current.balance - actualAmount);
-    const unreservedAmount = Math.min(reservedAmount, current.reserved);
-    const finalReserved = Math.max(0, current.reserved - unreservedAmount);
-
+  async finalizeDeduction(userId, reservedAmount, actualAmount, generationId, description = "AI Generation Charge", session = null) {
     const updated = await UserCredit.findOneAndUpdate(
-      { userId },
       {
-        $set: {
-          balance: finalBalance,
-          reserved: finalReserved,
+        userId,
+        reserved: { $gte: reservedAmount },
+        $expr: {
+          $gte: [
+            { $subtract: ["$balance", "$reserved"] },
+            Math.max(0, actualAmount - reservedAmount),
+          ],
         },
+      },
+      {
         $inc: {
+          balance: -actualAmount,
+          reserved: -reservedAmount,
           totalSpent: actualAmount,
         },
       },
-      { returnDocument: "after" }
+      { returnDocument: "before", session }
     );
+    if (!updated) throw new Error("Insufficient credits to settle generation charge");
+    const balanceBefore = updated.balance;
 
-    await CreditTransaction.create({
+    await CreditTransaction.create([{
       userId,
       transactionType: "DEDUCTION",
       amount: -actualAmount,
       balanceBefore,
-      balanceAfter: updated.balance,
+      balanceAfter: balanceBefore - actualAmount,
       relatedGeneration: generationId,
       status: "COMPLETED",
       description: description || `Deducted ${actualAmount} credits for generation ${generationId}`,
@@ -110,9 +112,9 @@ class CreditService {
         actualDeducted: actualAmount,
         unreservedExcess: Math.max(0, reservedAmount - actualAmount),
       },
-    });
+    }], { session });
 
-    return updated;
+    return { balance: balanceBefore - actualAmount, reserved: updated.reserved - reservedAmount };
   }
 
 

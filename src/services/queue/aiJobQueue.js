@@ -1,11 +1,14 @@
+const mongoose = require("mongoose");
 const AIGeneration = require("../../models/AIGeneration");
 const AIContent = require("../../models/AIContent");
 const AIUsage = require("../../models/AIUsage");
+const CreditTransaction = require("../../models/CreditTransaction");
 const creditService = require("../credits/creditService");
 const openaiService = require("../ai/openaiService");
 const magicaService = require("../ai/magicaService");
 const s3MediaService = require("../s3/s3MediaService");
 const logger = require("../../utils/logger");
+const generationMessages = require("../ai/generationMessages");
 
 const safeEmitToUser = (userId, event, data) => {
   try {
@@ -31,6 +34,51 @@ class AIJobQueue {
   enqueue(generationId) {
     this.queue.push(generationId.toString());
     setImmediate(() => this._processNext());
+  }
+
+  async recoverOnStartup() {
+    const pending = await AIGeneration.find({ status: "PENDING" }).select("_id");
+    for (const generation of pending) {
+      const reservation = await CreditTransaction.exists({
+        relatedGeneration: generation._id,
+        transactionType: "RESERVATION",
+        status: "COMPLETED",
+      });
+      if (reservation) {
+        this.enqueue(generation._id);
+      } else {
+        await AIGeneration.updateOne(
+          { _id: generation._id, status: "PENDING" },
+          { $set: { status: "FAILED", progress: 0, errorMessage: "Generation was interrupted before credits were reserved." } }
+        );
+      }
+    }
+
+    // A PROCESSING job may already have reached the provider. Replaying it
+    // could charge twice, so release its reservation and expose the failure.
+    const interrupted = await AIGeneration.find({ status: "PROCESSING" });
+    for (const generation of interrupted) {
+      try {
+        const message = "Generation interrupted by server restart; please retry.";
+        await creditService.refundCredits(
+          generation.userId,
+          generation.reservedCredits,
+          generation._id,
+          message
+        );
+        generation.status = "FAILED";
+        generation.progress = 0;
+        generation.errorMessage = message;
+        await generation.save();
+        await AIContent.updateOne(
+          { _id: generation.contentId, latestGenerationId: generation._id },
+          { $set: { status: "FAILED" } }
+        );
+      } catch (error) {
+        logger.error(`Could not recover AI generation ${generation._id}: ${error.message}`);
+      }
+    }
+    logger.info(`Recovered ${pending.length} pending AI jobs; marked ${interrupted.length} interrupted jobs for review.`);
   }
 
   async _processNext() {
@@ -69,7 +117,7 @@ class AIJobQueue {
       type,
       status: "processing",
       progress: 10,
-      message: `Starting ${type.toLowerCase()} generation process...`,
+      message: generationMessages.forType(type).start,
     });
 
     try {
@@ -90,7 +138,7 @@ class AIJobQueue {
           type,
           status: "processing",
           progress: 20,
-          message: "Refining prompt with AI for optimal visual quality...",
+          message: generationMessages.forType(type).refine,
         });
 
         promptResult = await openaiService.refinePrompt({
@@ -111,7 +159,7 @@ class AIJobQueue {
         type,
         status: "processing",
         progress: 40,
-        message: "Preparing assets and reference media...",
+        message: generationMessages.forType(type).prepare,
       });
 
       // Step 2: Handle private S3 media references for VIDEO_EDIT or Image-to-Video
@@ -141,31 +189,46 @@ class AIJobQueue {
         type,
         status: "processing",
         progress: 60,
-        message: `Rendering ${type.toLowerCase()} with AI diffusion engine...`,
+        message: generationMessages.forType(type).render,
       });
 
       let magicaResult;
-      if (type === "IMAGE") {
-        magicaResult = await magicaService.generateImage({
-          prompt: generation.refinedPrompt || prompt,
-          resolution: settings.resolution,
-          aspectRatio: settings.aspectRatio,
+      let waitingMessageIndex = 0;
+      const waitingMessages = generationMessages.forType(type).waiting;
+      const waitingTimer = setInterval(() => {
+        safeEmitToUser(userId, "ai:generation_progress", {
+          generationId: generation._id,
+          type,
+          status: "processing",
+          progress: 60,
+          message: waitingMessages[waitingMessageIndex++ % waitingMessages.length],
         });
-      } else if (type === "VIDEO") {
-        magicaResult = await magicaService.generateVideo({
-          prompt: generation.refinedPrompt || prompt,
-          resolution: settings.resolution,
-          aspectRatio: settings.aspectRatio,
-          duration: settings.duration,
-          audio: settings.audio,
-        });
-      } else if (type === "VIDEO_EDIT") {
-        magicaResult = await magicaService.editVideo({
-          prompt: generation.refinedPrompt || references.videoModificationPrompt || prompt,
-          videoUrl,
-          imageUrl,
-          audio: settings.audio,
-        });
+      }, 15000);
+      try {
+        if (type === "IMAGE") {
+          magicaResult = await magicaService.generateImage({
+            prompt: generation.refinedPrompt || prompt,
+            resolution: settings.resolution,
+            aspectRatio: settings.aspectRatio,
+          });
+        } else if (type === "VIDEO") {
+          magicaResult = await magicaService.generateVideo({
+            prompt: generation.refinedPrompt || prompt,
+            resolution: settings.resolution,
+            aspectRatio: settings.aspectRatio,
+            duration: settings.duration,
+            audio: settings.audio,
+          });
+        } else if (type === "VIDEO_EDIT") {
+          magicaResult = await magicaService.editVideo({
+            prompt: generation.refinedPrompt || references.videoModificationPrompt || prompt,
+            videoUrl,
+            imageUrl,
+            audio: settings.audio,
+          });
+        }
+      } finally {
+        clearInterval(waitingTimer);
       }
 
       // Step 3.5: Download Magica Output and Save Permanently to S3
@@ -177,7 +240,7 @@ class AIJobQueue {
         type,
         status: "processing",
         progress: 85,
-        message: "Finalizing and preparing your media...",
+        message: generationMessages.forType(type).save,
       });
 
       const s3Saved = await s3MediaService.downloadAndSaveToS3({
@@ -198,81 +261,68 @@ class AIJobQueue {
         generationType: type,
       });
 
-      // Save OpenAI usage log if tokens were consumed
-      if (promptResult.usage?.totalTokens > 0) {
-        await AIUsage.create({
-          userId,
-          generationId: generation._id,
-          provider: "openai",
-          model: promptResult.model,
-          inputTokens: promptResult.usage.inputTokens,
-          outputTokens: promptResult.usage.outputTokens,
-          totalTokens: promptResult.usage.totalTokens,
-          providerCost: promptResult.providerCost,
-          platformCredits: 0,
+      // Commit usage, credit settlement, and result together.
+      const friendlySuccessMsg = generationMessages.forType(type).done;
+      await mongoose.connection.transaction(async (session) => {
+        if (promptResult.usage?.totalTokens > 0) {
+          await AIUsage.create([{
+            userId, generationId: generation._id, provider: "openai",
+            model: promptResult.model,
+            inputTokens: promptResult.usage.inputTokens,
+            outputTokens: promptResult.usage.outputTokens,
+            totalTokens: promptResult.usage.totalTokens,
+            providerCost: promptResult.providerCost,
+            platformCredits: 0,
+            status: "COMPLETED",
+          }], { session });
+        }
+        await AIUsage.create([{
+          userId, generationId: generation._id, provider: "magica",
+          providerRequestId: magicaResult.runId,
+          generationType: type,
+          providerUsage: magicaResult.creditUsed,
+          providerCost: 0,
+          platformCredits: finalCreditsDeducted,
           status: "COMPLETED",
-        });
-      }
+          rawResponse: magicaResult.rawResponse,
+        }], { session });
 
-      // Save Magica usage log
-      await AIUsage.create({
-        userId,
-        generationId: generation._id,
-        provider: "magica",
-        providerRequestId: magicaResult.runId,
-        generationType: type,
-        providerUsage: magicaResult.creditUsed,
-        providerCost: 0,
-        platformCredits: finalCreditsDeducted,
-        status: "COMPLETED",
-        rawResponse: magicaResult.rawResponse,
+        await creditService.finalizeDeduction(
+          userId, reservedCredits, finalCreditsDeducted, generation._id,
+          `AI ${type} Generation: ${(generation.refinedPrompt || prompt).substring(0, 40)}...`,
+          session
+        );
+
+        generation.status = "COMPLETED";
+        generation.progress = 100;
+        generation.resultUrl = finalMediaUrl;
+        generation.resultS3Key = finalS3Key;
+        generation.providerRunId = magicaResult.runId;
+        generation.providerStatus = "COMPLETED";
+        generation.finalCreditsDeducted = finalCreditsDeducted;
+        generation.completedAt = new Date();
+        generation.metadata = {
+          ...generation.metadata,
+          magica: magicaResult,
+          openai: promptResult,
+          s3: s3Saved,
+        };
+        await generation.save({ session });
+
+        await AIContent.updateOne(
+          { _id: generation.contentId, latestGenerationId: generation._id },
+          { $set: {
+            mediaUrl: finalMediaUrl,
+            s3Key: finalS3Key,
+            status: "COMPLETED",
+          } },
+          { session }
+        );
       });
 
-      // Step 5: Finalize credit deduction and release any excess reservation
-      await creditService.finalizeDeduction(
-        userId,
-        reservedCredits,
-        finalCreditsDeducted,
-        generation._id,
-        `AI ${type} Generation: ${(generation.refinedPrompt || prompt).substring(0, 40)}...`
-      );
-
-      // Step 6: Mark generation as COMPLETED with permanent clean S3 URL
-      const typeLabel = type === "VIDEO_EDIT" ? "edited video" : type.toLowerCase();
-      const friendlySuccessMsg = `Your AI ${typeLabel} is ready!`;
-
-      generation.status = "COMPLETED";
-      generation.progress = 100;
-      generation.resultUrl = finalMediaUrl;
-      generation.resultS3Key = finalS3Key;
-      generation.providerRunId = magicaResult.runId;
-      generation.providerStatus = "COMPLETED";
-      generation.finalCreditsDeducted = finalCreditsDeducted;
-      generation.completedAt = new Date();
-      generation.metadata = {
-        ...generation.metadata,
-        magica: magicaResult,
-        openai: promptResult,
-        s3: s3Saved,
-      };
-
-      await generation.save();
-
-      // Permanently update parent AIContent record
-      if (generation.contentId) {
-        await AIContent.findByIdAndUpdate(generation.contentId, {
-          mediaUrl: finalMediaUrl,
-          s3Key: finalS3Key,
-          latestGenerationId: generation._id,
-          status: "COMPLETED",
-        });
-
-        // If replacing original video, clean up old S3 file
-        const oldKey = generation.metadata?.oldS3Key;
-        if (generation.metadata?.replaceOriginal && oldKey && oldKey !== finalS3Key) {
-          logger.info(`Replacing original video: deleting old S3 object ${oldKey}`);
-          await s3MediaService.deleteFile(oldKey);
-        }
+      const oldKey = generation.metadata?.oldS3Key;
+      if (generation.metadata?.replaceOriginal && oldKey && oldKey !== finalS3Key) {
+        await s3MediaService.deleteFile(oldKey);
       }
 
       // Push real-time completion event to specific user via Socket.io
@@ -292,6 +342,7 @@ class AIJobQueue {
       logger.info(`AI Generation ${generation._id} (${type}) completed. Direct S3 URL: ${finalMediaUrl}`);
     } catch (error) {
       const exactErrorMessage = error.message || "Generation processing failed";
+      const friendlyErrorMessage = generationMessages.forType(type).failed;
       logger.error(`AI Generation ${generation._id} failed: ${exactErrorMessage}`);
 
       // Auto-refund/release reserved credits
@@ -306,7 +357,6 @@ class AIJobQueue {
         logger.error(`Failed to refund credits for generation ${generation._id}: ${refundErr.message}`);
       }
 
-      const typeLabel = type === "VIDEO_EDIT" ? "edited video" : type.toLowerCase();
       generation.status = "FAILED";
       generation.progress = 0;
       generation.errorMessage = exactErrorMessage;
@@ -326,8 +376,8 @@ class AIJobQueue {
         status: "failed",
         progress: 0,
         creditsRefunded: reservedCredits,
-        error: exactErrorMessage,
-        message: exactErrorMessage,
+        error: friendlyErrorMessage,
+        message: friendlyErrorMessage,
       });
     }
   }

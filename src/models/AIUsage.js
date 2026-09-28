@@ -11,7 +11,6 @@ const aiUsageSchema = new mongoose.Schema(
     generationId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "AIGeneration",
-      required: true,
       index: true,
     },
     provider: {

@@ -189,12 +189,7 @@ class S3MediaService {
       };
     } catch (err) {
       logger.error(`Failed to download and upload AI output to S3: ${err.message}`);
-      // Fallback to original URL if S3 upload failed so user isn't left empty handed
-      return {
-        s3Key: null,
-        s3Url: sourceUrl,
-        presignedReadUrl: sourceUrl,
-      };
+      throw new Error(`Could not save AI output to S3: ${err.message}`);
     }
   }
 }

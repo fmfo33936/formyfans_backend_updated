@@ -108,9 +108,9 @@ ${userPrompt}`;
     const refinedPrompt = `${userPrompt.trim()}. ${suffix}`;
     return {
       refinedPrompt,
-      usage: { inputTokens: 40, outputTokens: 60, totalTokens: 100 },
+      usage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 },
       model: `${this.model}-local-fallback`,
-      providerCost: 0.00005,
+      providerCost: 0,
     };
   }
 }

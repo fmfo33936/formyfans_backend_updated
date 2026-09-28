@@ -76,9 +76,15 @@ function esc(s) {
 }
 
 // Build vis datasets
-const nodesDS = new vis.DataSet(RAW_NODES.map(n => ({
+const nodesDS = new vis.DataSet(RAW_NODES.map((n, i) => ({
   id: n.id, label: n.label, color: n.color, size: n.size,
   font: n.font, title: n.title,
+  // Fermat/golden-angle spiral seed positions (#3699): spreading nodes out
+  // before physics runs keeps avoidOverlap from computing near-zero-distance
+  // repulsion that blows the BarnesHut recursion into a stack overflow on large
+  // graphs. `i` is the map index — physics still settles small graphs identically.
+  x: 30 * Math.sqrt(i) * Math.cos(i * 2.4),
+  y: 30 * Math.sqrt(i) * Math.sin(i * 2.4),
   _community: n.community, _community_name: n.community_name,
   _source_file: n.source_file, _file_type: n.file_type, _degree: n.degree,
 })));

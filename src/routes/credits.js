@@ -16,7 +16,7 @@ router.get("/balance", verifyUser, creditsController.getBalance);
 router.get("/transactions", verifyUser, creditsController.getTransactions);
 
 // Credit pricing & single plan details
-router.get("/pricing", verifyUser, creditsController.getPricing);
+router.get("/pricing",  creditsController.getPricing);
 
 // Dynamic price calculator for credit amount selection
 router.post("/calculate-price", verifyUser, creditsController.calculatePrice);

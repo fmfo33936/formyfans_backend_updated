@@ -699,28 +699,47 @@ const directUploadSchema = Joi.object({
 }).unknown(false);
 
 const refinePromptSchema = Joi.object({
-  type: Joi.string().valid("IMAGE", "VIDEO", "VIDEO_EDIT").default("IMAGE"),
-  prompt: Joi.string().trim().required(),
+  type: Joi.string().valid("IMAGE", "VIDEO", "VIDEO_EDIT").default("IMAGE").messages({
+    "any.only": "Type must be one of: IMAGE, VIDEO, VIDEO_EDIT",
+  }),
+  prompt: Joi.string().trim().required().messages({
+    "any.required": "Prompt is required",
+    "string.empty": "Prompt cannot be empty",
+  }),
   style: Joi.string().trim().allow("").optional(),
   settings: Joi.object({
-    resolution: Joi.string().trim().valid("480p", "720p", "1080p").optional(),
-    aspectRatio: Joi.string().trim().valid("1:1", "4:3", "3:4", "16:9", "9:16").optional(),
-    duration: Joi.number().valid(5, 10, 15).optional(),
+    resolution: Joi.string().trim().valid("480p", "720p", "1080p").optional().messages({
+      "any.only": "Resolution must be one of: 480p, 720p, 1080p",
+    }),
+    aspectRatio: Joi.string().trim().valid("1:1", "4:3", "3:4", "16:9", "9:16").optional().messages({
+      "any.only": "Aspect ratio must be one of: 1:1, 4:3, 3:4, 16:9, 9:16",
+    }),
+    duration: Joi.number().valid(5, 10, 15).optional().messages({
+      "any.only": "Duration must be one of: 5, 10, 15",
+    }),
     audio: Joi.boolean().optional(),
   }).optional(),
   videoModificationPrompt: Joi.string().trim().allow("").optional(),
 }).unknown(false);
 
 const aiGenerationSchema = Joi.object({
-  type: Joi.string().valid("IMAGE", "VIDEO", "VIDEO_EDIT").optional(),
+  type: Joi.string().valid("IMAGE", "VIDEO", "VIDEO_EDIT").optional().messages({
+    "any.only": "Type must be one of: IMAGE, VIDEO, VIDEO_EDIT",
+  }),
   contentId: Joi.string().trim().optional(),
   replaceOriginal: Joi.boolean().optional(),
   prompt: Joi.string().trim().allow("").optional(),
   refinedPrompt: Joi.string().trim().allow("").optional(),
   promptId: Joi.string().trim().optional(),
-  resolution: Joi.string().trim().valid("480p", "720p", "1080p").optional(),
-  aspectRatio: Joi.string().trim().valid("1:1", "4:3", "3:4", "16:9", "9:16").optional(),
-  duration: Joi.number().valid(5, 10, 15).optional(),
+  resolution: Joi.string().trim().valid("480p", "720p", "1080p").optional().messages({
+    "any.only": "Resolution must be one of: 480p, 720p, 1080p",
+  }),
+  aspectRatio: Joi.string().trim().valid("1:1", "4:3", "3:4", "16:9", "9:16").optional().messages({
+    "any.only": "Aspect ratio must be one of: 1:1, 4:3, 3:4, 16:9, 9:16",
+  }),
+  duration: Joi.number().valid(5, 10, 15).optional().messages({
+    "any.only": "Duration must be one of: 5, 10, 15",
+  }),
   audio: Joi.boolean().optional(),
   videoReference: Joi.string().trim().optional(),
   imageReference: Joi.string().trim().allow(null, "").optional(),

@@ -13,6 +13,9 @@ const {
   updatePricingSchema,
 } = require("../utils/validations");
 const { successHelper, errorHelper } = require("../utils/helper");
+const logger = require("../utils/logger");
+
+const getStripeReturnUrl = () => process.env.STRIPE_RETURN_URL || undefined;
 
 /**
  * Returns current user credit balance (available & reserved).
@@ -133,7 +136,7 @@ const createPurchasePaymentIntent = async (req, res, next) => {
     }
 
     const pricing = await CreditPricing.getActivePricing();
-    const { credits, paymentMethodId, card } = validatedData;
+    const { credits, paymentMethodId } = validatedData;
     const creditsToBuy = credits;
 
     if (creditsToBuy < pricing.minCredits) {
@@ -145,7 +148,6 @@ const createPurchasePaymentIntent = async (req, res, next) => {
       );
     }
 
-    // Dynamic price calculation: e.g. 100 * 0.1999 = $19.99
     const priceUsd = Number((creditsToBuy * pricing.pricePerCredit).toFixed(2));
     const finalAmountCents = Math.round(priceUsd * 100);
 
@@ -156,7 +158,6 @@ const createPurchasePaymentIntent = async (req, res, next) => {
     const userId = req.user._id;
     const stripe = getStripe();
 
-    // Fetch or create Stripe customer
     const userDoc = await User.findById(userId).select("+stripeCustomerId email");
     let stripeCustomerId = userDoc?.stripeCustomerId;
     if (!stripeCustomerId) {
@@ -168,22 +169,7 @@ const createPurchasePaymentIntent = async (req, res, next) => {
       await User.findByIdAndUpdate(userId, { stripeCustomerId });
     }
 
-    // Direct Payment Method resolution if provided
     let pmId = paymentMethodId;
-    if (!pmId && card && card.number) {
-      const pm = await stripe.paymentMethods.create({
-        type: "card",
-        card: {
-          number: card.number,
-          exp_month: Number(card.expMonth),
-          exp_year: Number(card.expYear),
-          cvc: card.cvc,
-        },
-      });
-      pmId = pm.id;
-    }
-
-    // If pmId not provided, check if the customer already has a default saved card
     if (!pmId && stripeCustomerId) {
       try {
         const customer = await stripe.customers.retrieve(stripeCustomerId);
@@ -193,7 +179,7 @@ const createPurchasePaymentIntent = async (req, res, next) => {
             : customer.invoice_settings.default_payment_method?.id;
         }
       } catch (custErr) {
-        // Proceed without pre-saved card
+        logger.warn(`Could not load the saved payment method for user ${userId}: ${custErr.message}`);
       }
     }
 
@@ -201,7 +187,7 @@ const createPurchasePaymentIntent = async (req, res, next) => {
       try {
         await stripe.paymentMethods.attach(pmId, { customer: stripeCustomerId });
       } catch (attachErr) {
-        // Already attached is fine
+        logger.warn(`Could not attach payment method for user ${userId}: ${attachErr.message}`);
       }
     }
 
@@ -218,18 +204,17 @@ const createPurchasePaymentIntent = async (req, res, next) => {
       },
     };
 
-    // If paymentMethodId is provided, charge and confirm directly in 1 step
     if (pmId) {
       piPayload.payment_method = pmId;
       piPayload.confirm = true;
       piPayload.off_session = true;
-      piPayload.return_url = "https://localhost:5009/return";
+      const returnUrl = getStripeReturnUrl();
+      if (returnUrl) piPayload.return_url = returnUrl;
     }
 
     const paymentIntent = await stripe.paymentIntents.create(piPayload);
     const isSucceeded = paymentIntent.status === "succeeded";
 
-    // Record in AIPaymentHistory
     await AIPaymentHistory.create({
       userId,
       stripePaymentIntentId: paymentIntent.id,
@@ -304,9 +289,13 @@ const verifyPayment = async (req, res, next) => {
       return errorHelper(res, null, "We couldn't find that payment. Please check it and try again.", 404);
     }
 
-    // If status is not succeeded yet, attempt confirmation if customer has a default payment method or if one was supplied
+    const metadataUserId = paymentIntent.metadata?.userId;
+    if (metadataUserId && metadataUserId !== req.user._id.toString()) {
+      return errorHelper(res, null, "This payment isn't linked to your account.", 403);
+    }
+
     if (paymentIntent.status !== "succeeded") {
-      let pmToUse = req.body.paymentMethodId;
+      let pmToUse = validatedData.paymentMethodId;
       if (!pmToUse && paymentIntent.customer) {
         try {
           const customer = await stripe.customers.retrieve(paymentIntent.customer);
@@ -315,17 +304,19 @@ const verifyPayment = async (req, res, next) => {
               ? customer.invoice_settings.default_payment_method
               : customer.invoice_settings.default_payment_method?.id;
           }
-        } catch (e) {}
+        } catch (error) {
+          logger.warn(`Could not load the saved payment method during payment verification: ${error.message}`);
+        }
       }
 
       if (pmToUse && (paymentIntent.status === "requires_payment_method" || paymentIntent.status === "requires_confirmation")) {
         try {
           paymentIntent = await stripe.paymentIntents.confirm(paymentIntentId, {
             payment_method: pmToUse,
-            return_url: "https://localhost:5009/return",
+            ...(getStripeReturnUrl() ? { return_url: getStripeReturnUrl() } : {}),
           });
         } catch (confirmErr) {
-          // Status check below will report the appropriate error
+          logger.warn(`Stripe could not confirm payment ${paymentIntentId}: ${confirmErr.message}`);
         }
       }
     }
@@ -339,18 +330,11 @@ const verifyPayment = async (req, res, next) => {
       );
     }
 
-    // Verify ownership
-    const metadataUserId = paymentIntent.metadata?.userId;
-    if (metadataUserId && metadataUserId !== req.user._id.toString()) {
-      return errorHelper(res, null, "This payment isn't linked to your account.", 403);
-    }
-
     const creditsToAdd = Number(paymentIntent.metadata?.creditsToBuy) || 0;
     if (creditsToAdd <= 0) {
       return errorHelper(res, null, "We couldn't confirm the credits for this payment. Please contact support.", 400);
     }
 
-    // Safely and idempotently credit balance
     const updatedCredit = await creditService.addPurchasedCredits(
       req.user._id,
       creditsToAdd,
@@ -436,37 +420,6 @@ const updatePricing = async (req, res, next) => {
   }
 };
 
-/**
- * Test & Development helper: confirms a PaymentIntent using Stripe's default test card (pm_card_visa)
- * so developers can test the complete purchase and verification flow in Postman without a frontend UI.
- * POST /api/credits/confirm-test-payment
- */
-const confirmTestPayment = async (req, res, next) => {
-  try {
-    const { paymentIntentId } = req.body;
-    if (!paymentIntentId) {
-      return errorHelper(res, null, "paymentIntentId is required", 400);
-    }
-    const stripe = getStripe();
-    const confirmedPi = await stripe.paymentIntents.confirm(paymentIntentId, {
-      payment_method: "pm_card_visa",
-      return_url: "https://localhost:5009/return",
-    });
-
-    return successHelper(
-      res,
-      {
-        paymentIntentId: confirmedPi.id,
-        status: confirmedPi.status,
-      },
-      `PaymentIntent successfully confirmed with test card pm_card_visa. Current status: ${confirmedPi.status}`,
-      200
-    );
-  } catch (err) {
-    return next(err);
-  }
-};
-
 module.exports = {
   getBalance,
   getTransactions,
@@ -474,7 +427,6 @@ module.exports = {
   calculatePrice,
   createPurchasePaymentIntent,
   verifyPayment,
-  confirmTestPayment,
   getPaymentHistory,
   updatePricing,
 };

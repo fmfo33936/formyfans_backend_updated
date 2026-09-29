@@ -54,8 +54,6 @@ class AIJobQueue {
       }
     }
 
-    // A PROCESSING job may already have reached the provider. Replaying it
-    // could charge twice, so release its reservation and expose the failure.
     const interrupted = await AIGeneration.find({ status: "PROCESSING" });
     for (const generation of interrupted) {
       try {
@@ -105,7 +103,6 @@ class AIJobQueue {
       return;
     }
 
-    // Mark as PROCESSING
     generation.status = "PROCESSING";
     generation.progress = 10;
     await generation.save();
@@ -121,7 +118,6 @@ class AIJobQueue {
     });
 
     try {
-      // Step 1: Prompt check / optimization
       let promptResult = {
         refinedPrompt: generation.refinedPrompt || prompt,
         model: "gpt-4o-mini",
@@ -162,7 +158,6 @@ class AIJobQueue {
         message: generationMessages.forType(type).prepare,
       });
 
-      // Step 2: Handle private S3 media references for VIDEO_EDIT or Image-to-Video
       let videoUrl = references.videoReference;
       let imageUrl = references.imageReference;
 
@@ -180,7 +175,6 @@ class AIJobQueue {
         });
       }
 
-      // Step 3: Call Magica Provider
       generation.progress = 60;
       await generation.save();
 
@@ -231,7 +225,6 @@ class AIJobQueue {
         clearInterval(waitingTimer);
       }
 
-      // Step 3.5: Download Magica Output and Save Permanently to S3
       generation.progress = 85;
       await generation.save();
 
@@ -250,18 +243,15 @@ class AIJobQueue {
         type,
       });
 
-      // Permanent clean S3 URL (short & direct without query parameters)
       const finalMediaUrl = s3Saved?.s3Url || s3Saved?.presignedReadUrl || magicaResult.mediaUrl;
       const finalS3Key = s3Saved?.s3Key || null;
 
-      // Step 4: Track usage
       const finalCreditsDeducted = await creditService.calculatePlatformCredits({
         openaiUsage: promptResult.usage,
         magicaUsage: magicaResult,
         generationType: type,
       });
 
-      // Commit usage, credit settlement, and result together.
       const friendlySuccessMsg = generationMessages.forType(type).done;
       await mongoose.connection.transaction(async (session) => {
         if (promptResult.usage?.totalTokens > 0) {
@@ -284,7 +274,6 @@ class AIJobQueue {
           providerCost: 0,
           platformCredits: finalCreditsDeducted,
           status: "COMPLETED",
-          rawResponse: magicaResult.rawResponse,
         }], { session });
 
         await creditService.finalizeDeduction(
@@ -303,7 +292,12 @@ class AIJobQueue {
         generation.completedAt = new Date();
         generation.metadata = {
           ...generation.metadata,
-          magica: magicaResult,
+          magica: {
+            runId: magicaResult.runId,
+            provider: magicaResult.provider,
+            nodeType: magicaResult.nodeType,
+            creditUsed: magicaResult.creditUsed,
+          },
           openai: promptResult,
           s3: s3Saved,
         };
@@ -325,7 +319,6 @@ class AIJobQueue {
         await s3MediaService.deleteFile(oldKey);
       }
 
-      // Push real-time completion event to specific user via Socket.io
       safeEmitToUser(userId, "ai:generation_completed", {
         generationId: generation._id,
         contentId: generation.contentId,
@@ -339,13 +332,12 @@ class AIJobQueue {
         completedAt: generation.completedAt,
       });
 
-      logger.info(`AI Generation ${generation._id} (${type}) completed. Direct S3 URL: ${finalMediaUrl}`);
+      logger.info(`AI generation ${generation._id} (${type}) completed.`);
     } catch (error) {
       const exactErrorMessage = error.message || "Generation processing failed";
       const friendlyErrorMessage = generationMessages.forType(type).failed;
       logger.error(`AI Generation ${generation._id} failed: ${exactErrorMessage}`);
 
-      // Auto-refund/release reserved credits
       try {
         await creditService.refundCredits(
           userId,
@@ -368,7 +360,6 @@ class AIJobQueue {
         });
       }
 
-      // Push real-time failure notification to user via Socket.io
       safeEmitToUser(userId, "ai:generation_failed", {
         generationId: generation._id,
         contentId: generation.contentId,

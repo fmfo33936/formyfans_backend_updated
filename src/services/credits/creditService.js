@@ -2,6 +2,8 @@ const mongoose = require("mongoose");
 const UserCredit = require("../../models/UserCredit");
 const CreditTransaction = require("../../models/CreditTransaction");
 const CreditPricing = require("../../models/CreditPricing");
+const AIPaymentHistory = require("../../models/AIPaymentHistory");
+const User = require("../../models/auth");
 const logger = require("../../utils/logger");
 
 class CreditService {
@@ -9,17 +11,11 @@ class CreditService {
    * Retrieves or initializes the credit balance record for a user.
    */
   async getOrCreateUserCredit(userId) {
-    let credit = await UserCredit.findOne({ userId });
-    if (!credit) {
-      credit = await UserCredit.create({
-        userId,
-        balance: 0,
-        reserved: 0,
-        totalPurchased: 0,
-        totalSpent: 0,
-      });
-    }
-    return credit;
+    return UserCredit.findOneAndUpdate(
+      { userId },
+      { $setOnInsert: { balance: 0, reserved: 0, totalPurchased: 0, totalSpent: 0 } },
+      { upsert: true, returnDocument: "after", setDefaultsOnInsert: true }
+    );
   }
 
   /**
@@ -37,36 +33,36 @@ class CreditService {
    */
   async reserveCredits(userId, amount, generationId) {
     if (amount <= 0) return true;
+    let credit;
+    try {
+      await mongoose.connection.transaction(async (session) => {
+        credit = await UserCredit.findOneAndUpdate(
+          {
+            userId,
+            $expr: { $gte: [{ $subtract: ["$balance", "$reserved"] }, amount] },
+          },
+          { $inc: { reserved: amount } },
+          { returnDocument: "after", session }
+        );
+        if (!credit) throw new Error("Insufficient available credit balance to reserve.");
 
-    // Atomically increment reserved only if available balance >= amount
-    const credit = await UserCredit.findOneAndUpdate(
-      {
-        userId,
-        $expr: { $gte: [{ $subtract: ["$balance", "$reserved"] }, amount] },
-      },
-      {
-        $inc: { reserved: amount },
-      },
-      { returnDocument: "after" }
-    );
-
-    if (!credit) {
-      throw new Error("Insufficient available credit balance to reserve.");
+        await CreditTransaction.create([{
+          userId,
+          transactionType: "RESERVATION",
+          amount,
+          balanceBefore: credit.balance,
+          balanceAfter: credit.balance,
+          relatedGeneration: generationId,
+          idempotencyKey: `reservation_${generationId}`,
+          status: "COMPLETED",
+          description: `Reserved ${amount} credits for generation ${generationId}`,
+          metadata: { reservedAmount: amount, currentReservedTotal: credit.reserved },
+        }], { session });
+      });
+    } catch (error) {
+      if (error?.code === 11000) return this.getOrCreateUserCredit(userId);
+      throw error;
     }
-
-    // Log the reservation transaction
-    await CreditTransaction.create({
-      userId,
-      transactionType: "RESERVATION",
-      amount,
-      balanceBefore: credit.balance,
-      balanceAfter: credit.balance,
-      relatedGeneration: generationId,
-      status: "COMPLETED",
-      description: `Reserved ${amount} credits for generation ${generationId}`,
-      metadata: { reservedAmount: amount, currentReservedTotal: credit.reserved },
-    });
-
     return credit;
   }
 
@@ -105,6 +101,7 @@ class CreditService {
       balanceBefore,
       balanceAfter: balanceBefore - actualAmount,
       relatedGeneration: generationId,
+      idempotencyKey: `deduction_${generationId}`,
       status: "COMPLETED",
       description: description || `Deducted ${actualAmount} credits for generation ${generationId}`,
       metadata: {
@@ -123,34 +120,36 @@ class CreditService {
    */
   async refundCredits(userId, reservedAmount, generationId, reason = "Generation failed") {
     if (reservedAmount <= 0) return;
+    let updated;
+    try {
+      await mongoose.connection.transaction(async (session) => {
+        const current = await UserCredit.findOne({ userId }).session(session);
+        if (!current) return;
+        const released = Math.min(reservedAmount, current.reserved);
+        if (released <= 0) return;
 
-    const current = await this.getOrCreateUserCredit(userId);
-    const balanceBefore = current.balance;
-
-    const unreservedAmount = Math.min(reservedAmount, current.reserved);
-
-    const updated = await UserCredit.findOneAndUpdate(
-      { userId },
-      {
-        $inc: {
-          reserved: -unreservedAmount,
-        },
-      },
-      { returnDocument: "after" }
-    );
-
-    await CreditTransaction.create({
-      userId,
-      transactionType: "REFUND",
-      amount: reservedAmount,
-      balanceBefore,
-      balanceAfter: updated.balance,
-      relatedGeneration: generationId,
-      status: "COMPLETED",
-      description: `Released ${reservedAmount} reserved credits: ${reason}`,
-      metadata: { reason, releasedReserved: reservedAmount },
-    });
-
+        updated = await UserCredit.findOneAndUpdate(
+          { userId, reserved: { $gte: released } },
+          { $inc: { reserved: -released } },
+          { returnDocument: "after", session }
+        );
+        await CreditTransaction.create([{
+          userId,
+          transactionType: "REFUND",
+          amount: released,
+          balanceBefore: current.balance,
+          balanceAfter: current.balance,
+          relatedGeneration: generationId,
+          idempotencyKey: `refund_${generationId}`,
+          status: "COMPLETED",
+          description: `Released ${released} reserved credits: ${reason}`,
+          metadata: { reason, releasedReserved: released },
+        }], { session });
+      });
+    } catch (error) {
+      if (error?.code === 11000) return this.getOrCreateUserCredit(userId);
+      throw error;
+    }
     return updated;
   }
 
@@ -158,73 +157,50 @@ class CreditService {
    * Adds credits purchased through payment (idempotent via paymentIntentId).
    */
   async addPurchasedCredits(userId, creditsAmount, paymentIntentId, description = "Credit Purchase") {
-    // Check idempotency first
-    const existingTx = await CreditTransaction.findOne({
-      relatedPayment: paymentIntentId,
-      transactionType: "PURCHASE",
-      status: "COMPLETED",
-    });
+    await this.getOrCreateUserCredit(userId);
+    let updated;
 
-    if (existingTx) {
-      logger.info(`Payment ${paymentIntentId} already credited. Skipping duplicate.`);
-      return await this.getOrCreateUserCredit(userId);
-    }
-
-    const current = await this.getOrCreateUserCredit(userId);
-    const balanceBefore = current.balance;
-
-    const baseBalance = Math.max(0, current.balance);
-    const newBalance = baseBalance + creditsAmount;
-
-    const updated = await UserCredit.findOneAndUpdate(
-      { userId },
-      {
-        $set: {
-          balance: newBalance,
-        },
-        $inc: {
-          totalPurchased: creditsAmount,
-        },
-      },
-      { returnDocument: "after", upsert: true }
-    );
-
-    await CreditTransaction.create({
-      userId,
-      transactionType: "PURCHASE",
-      amount: creditsAmount,
-      balanceBefore,
-      balanceAfter: updated.balance,
-      relatedPayment: paymentIntentId,
-      idempotencyKey: `purchase_${paymentIntentId}`,
-      status: "COMPLETED",
-      description: description || `Purchased ${creditsAmount} platform credits`,
-      metadata: { paymentIntentId },
-    });
-
-    // Mark AIPaymentHistory as succeeded
     try {
-      const AIPaymentHistory = require("../../models/AIPaymentHistory");
-      const User = require("../../models/auth");
+      await mongoose.connection.transaction(async (session) => {
+        const current = await UserCredit.findOne({ userId }).session(session);
+        if (!current) throw new Error("Credit account not found");
 
-      await AIPaymentHistory.findOneAndUpdate(
-        { stripePaymentIntentId: paymentIntentId },
-        {
-          $set: {
-            userId,
-            creditsPurchased: creditsAmount,
-            status: "succeeded",
-            paidAt: new Date(),
-          },
-        },
-        { upsert: true, returnDocument: "after" }
-      );
+        await CreditTransaction.create([{
+          userId,
+          transactionType: "PURCHASE",
+          amount: creditsAmount,
+          balanceBefore: current.balance,
+          balanceAfter: current.balance + creditsAmount,
+          relatedPayment: paymentIntentId,
+          idempotencyKey: `purchase_${paymentIntentId}`,
+          status: "COMPLETED",
+          description: description || `Purchased ${creditsAmount} platform credits`,
+          metadata: { paymentIntentId },
+        }], { session });
 
-      await User.findByIdAndUpdate(userId, {
-        isAIPremiumActive: true,
+        updated = await UserCredit.findOneAndUpdate(
+          { userId },
+          { $inc: { balance: creditsAmount, totalPurchased: creditsAmount } },
+          { returnDocument: "after", session }
+        );
+
+        await AIPaymentHistory.updateOne(
+          { stripePaymentIntentId: paymentIntentId },
+          { $set: { status: "succeeded", paidAt: new Date() } },
+          { session }
+        );
+        await User.updateOne(
+          { _id: userId },
+          { $set: { isAIPremiumActive: true } },
+          { session }
+        );
       });
-    } catch (historyErr) {
-      logger.error(`Error updating AIPaymentHistory: ${historyErr.message}`);
+    } catch (error) {
+      if (error?.code === 11000) {
+        logger.info(`Payment ${paymentIntentId} was already credited.`);
+        return this.getOrCreateUserCredit(userId);
+      }
+      throw error;
     }
 
     return updated;

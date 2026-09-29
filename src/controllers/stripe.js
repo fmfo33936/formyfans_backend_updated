@@ -14,6 +14,7 @@ const FanPaymentHistory = require("../models/fanPaymentHistory");
 const FanSubscription = require("../models/fanSubscription");
 const Campaign = require("../models/campaign");
 const User = require("../models/auth");
+const logger = require("../utils/logger");
 
 /**
  * Verifies a succeeded PaymentIntent matches order total and user.
@@ -69,47 +70,7 @@ const handleStripeWebhook = async (req, res) => {
     return res.status(400).send(`Webhook Error: ${error.message}`);
   }
 
-  console.log("Received Stripe event ======>", event.type);
-
   try {
-    // if (event.type === "payment_intent.succeeded") {
-    // const paymentIntent = event.data.object;
-    // const publicOrderId = paymentIntent.metadata?.orderId;
-
-    // if (publicOrderId) {
-    //   const order = await findOrderByOrderId(publicOrderId);
-    //   if (order && order.stripePaymentIntentId === paymentIntent.id) {
-    //     order.stripePaymentStatus = "succeeded";
-    //     await order.save();
-    //   }
-    // }
-
-    // if (event?.data?.object?.metadata?.type === "create_campaign") {
-    //   const campaignId = event.data.object.metadata.campaignId;
-    //   if (!campaignId) return;
-
-    //   const campaign = await Campaign.findById(campaignId);
-    //   if (campaign && campaign.paymentStatus !== "paid") {
-    //     campaign.paymentStatus = "paid";
-    //     campaign.paymentIntentId = event.data.object.id;
-    //     await campaign.save();
-    //   }
-    // }
-    // break;
-    // }
-
-    // if (event.type === "payment_intent.payment_failed") {
-    // const paymentIntent = event.data.object;
-    // const publicOrderId = paymentIntent.metadata?.orderId;
-    // if (publicOrderId) {
-    //   const order = await findOrderByOrderId(publicOrderId);
-    //   if (order && order.stripePaymentIntentId === paymentIntent.id) {
-    //     order.stripePaymentStatus = "failed";
-    //     await order.save();
-    //   }
-    // }
-    // }
-
     switch (event.type) {
       case "payment_intent.succeeded": {
         const sub = event.data.object;
@@ -163,7 +124,7 @@ const handleStripeWebhook = async (req, res) => {
               { status: "failed" }
             );
           } catch (err) {
-            console.error("Error updating failed AIPaymentHistory:", err.message);
+            logger.error(`Could not mark AI payment ${sub.id} as failed: ${err.message}`);
           }
         }
         break;
@@ -200,14 +161,11 @@ const handleStripeWebhook = async (req, res) => {
       }
 
       case "customer.subscription.created": {
-        const sub = event.data.object;
-        // console.log("Subscription created:", sub);
         break;
       }
 
       case "customer.subscription.updated": {
         const sub = event.data.object;
-        // console.log("Subscription updated:", sub);
         if (sub.metadata?.type === "creator_subscription") {
           await handleCreatorSubscriptionUpdated(sub);
         } else {
@@ -218,7 +176,6 @@ const handleStripeWebhook = async (req, res) => {
 
       case "customer.subscription.deleted": {
         const sub = event.data.object;
-        // console.log("Subscription deleted:", sub);
         if (sub.metadata?.type === "creator_subscription") {
           await handleCreatorSubscriptionDeleted(sub);
         } else {
@@ -228,15 +185,11 @@ const handleStripeWebhook = async (req, res) => {
       }
 
       case "customer.subscription.trial_will_end": {
-        const sub = event.data.object;
-        // console.log("Trial ending soon for subscription:", sub);
         break;
       }
 
       case "invoice.paid": {
         const invoice = event.data.object;
-        // console.log("Invoice paid:", invoice);
-
         if (
           invoice.parent?.subscription_details?.metadata?.type ===
           "creator_subscription"
@@ -250,7 +203,6 @@ const handleStripeWebhook = async (req, res) => {
 
       case "invoice.payment_failed": {
         const invoice = event.data.object;
-        // console.log("Invoice payment failed:", invoice);
         if (
           invoice.parent?.subscription_details?.metadata?.type ===
           "creator_subscription"
@@ -263,14 +215,13 @@ const handleStripeWebhook = async (req, res) => {
       }
 
       default:
-        console.log(`📭 Unhandled event type: ${event.type}`);
         break;
     }
 
     return res.status(200).json({ received: true });
   } catch (error) {
-    console.error("Webhook handler error:", error);
-    return res.status(500).json({ message: error.message });
+    logger.error(`Stripe webhook handler failed: ${error.message}`);
+    return res.status(500).json({ message: "We couldn't process this payment update." });
   }
 };
 
@@ -460,7 +411,6 @@ async function handleCreatorSubscriptionDeleted(stripeSub) {
 }
 
 async function handleCreatorInvoicePaid(invoice) {
-  console.log("handleCreatorInvoicePaidinvoice", invoice);
   if (!invoice.parent?.subscription_details?.subscription) return;
 
   const stripeSubscriptionId = invoice.parent.subscription_details.subscription;
@@ -487,7 +437,7 @@ async function handleCreatorInvoicePaid(invoice) {
   const alreadyLogged = await FanPaymentHistory.findOne({
     stripeInvoiceId: invoice.id,
   });
-  // if (alreadyLogged) return; 
+  if (alreadyLogged) return;
 
   const fullInvoice = await getStripe().invoices.retrieve(invoice.id, {
     expand: ["payments.data.payment.payment_intent"],
@@ -500,14 +450,8 @@ async function handleCreatorInvoicePaid(invoice) {
       ? paymentIntent
       : (paymentIntent?.id ?? null);
 
-
-  console.log("paymentIntent", paymentIntent);
-  console.log("paymentIntentId", paymentIntentId);
-
   const { stripeFeeInCents, netAmountInCents } =
     await getFeeBreakdownFromPaymentIntent(paymentIntent ?? paymentIntentId);
-  console.log("stripeFeeInCents", stripeFeeInCents);
-  console.log("netAmountInCents", netAmountInCents);
 
   await FanPaymentHistory.create({
     fanId: fanSub.fanId,

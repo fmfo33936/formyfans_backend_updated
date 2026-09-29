@@ -749,12 +749,6 @@ const aiGenerationSchema = Joi.object({
 const purchaseCreditsSchema = Joi.object({
   credits: Joi.number().integer().min(1).required(),
   paymentMethodId: Joi.string().trim().optional(),
-  card: Joi.object({
-    number: Joi.string().trim().required(),
-    expMonth: Joi.number().integer().min(1).max(12).required(),
-    expYear: Joi.number().integer().min(2024).required(),
-    cvc: Joi.string().trim().min(3).max(4).required(),
-  }).optional(),
 }).unknown(false);
 
 const calculateCreditPriceSchema = Joi.object({
@@ -763,6 +757,7 @@ const calculateCreditPriceSchema = Joi.object({
 
 const verifyCreditPaymentSchema = Joi.object({
   paymentIntentId: Joi.string().trim().required(),
+  paymentMethodId: Joi.string().trim().optional(),
 }).unknown(false);
 
 const updatePricingSchema = Joi.object({

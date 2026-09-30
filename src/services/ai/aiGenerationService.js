@@ -4,6 +4,7 @@ const AIPrompt = require("../../models/AIPrompt");
 const creditService = require("../credits/creditService");
 const aiJobQueue = require("../queue/aiJobQueue");
 const generationMessages = require("./generationMessages");
+const mongoose = require("mongoose");
 
 class AIGenerationService {
   /**
@@ -37,7 +38,17 @@ class AIGenerationService {
       throw new Error(`Invalid resolution '${resolution}' for image. Supported values: '480p', '720p', '1080p'.`);
     }
 
-    const requiredReservation = await creditService.getRequiredReservationCredits(type);
+    if (promptId && !mongoose.Types.ObjectId.isValid(promptId)) {
+      throw new Error("Saved prompt not found.");
+    }
+    if (contentId && !mongoose.Types.ObjectId.isValid(contentId)) {
+      throw new Error("AI content not found.");
+    }
+
+    const requiredReservation = await creditService.getRequiredReservationCredits(type, {
+      resolution,
+      duration,
+    });
 
     // 1. Verify credit availability
     const hasEnough = await creditService.hasSufficientCredits(userId, requiredReservation);
@@ -51,12 +62,11 @@ class AIGenerationService {
 
     if (promptId) {
       const savedPrompt = await AIPrompt.findOne({ _id: promptId, userId });
-      if (savedPrompt) {
-        if (!finalPrompt) finalPrompt = savedPrompt.originalPrompt;
-        if (!finalRefinedPrompt) finalRefinedPrompt = savedPrompt.refinedPrompt;
-        savedPrompt.status = "USED";
-        await savedPrompt.save();
-      }
+      if (!savedPrompt) throw new Error("Saved prompt not found.");
+      if (!finalPrompt) finalPrompt = savedPrompt.originalPrompt;
+      if (!finalRefinedPrompt) finalRefinedPrompt = savedPrompt.refinedPrompt;
+      savedPrompt.status = "USED";
+      await savedPrompt.save();
     }
 
     // If refinedPrompt was passed directly as prompt
@@ -77,82 +87,74 @@ class AIGenerationService {
       videoModificationPrompt,
     };
 
-    // 3. Create or link AIContent parent project
-    let content = null;
+    for (const reference of [videoReference, imageReference].filter(Boolean)) {
+      const isOwnedKey = reference.startsWith(`users/${userId}/`);
+      const isOwnedContentUrl = await AIContent.exists({
+        userId,
+        $or: [{ s3Key: reference }, { mediaUrl: reference }],
+      });
+      if (!isOwnedKey && !isOwnedContentUrl) {
+        throw new Error("Media reference does not belong to this account.");
+      }
+    }
+
+    // Content, generation and reserved credits commit together.
+    let content;
+    let generation;
     let oldS3Key = null;
+    await mongoose.connection.transaction(async (session) => {
+      if (contentId) content = await AIContent.findOne({ _id: contentId, userId }).session(session);
+      if (!content && videoReference) {
+        content = await AIContent.findOne({
+          userId,
+          $or: [{ s3Key: videoReference }, { mediaUrl: videoReference }],
+        }).session(session);
+      }
+      if (contentId && !content) throw new Error("AI content not found.");
 
-    if (contentId) {
-      content = await AIContent.findOne({ _id: contentId, userId });
-    }
-    // Auto-detect existing project if videoReference matches an existing project
-    if (!content && videoReference) {
-      content = await AIContent.findOne({
-        userId,
-        $or: [{ s3Key: videoReference }, { mediaUrl: videoReference }],
-      });
-    }
+      if (content) {
+        oldS3Key = content.s3Key;
+        content.generationsCount = (content.generationsCount || 0) + 1;
+        content.type = type;
+        if (finalPrompt) content.prompt = finalPrompt;
+        if (finalRefinedPrompt) content.currentRefinedPrompt = finalRefinedPrompt;
+        content.settings = settings;
+        content.references = references;
+        content.status = "PROCESSING";
+      } else {
+        [content] = await AIContent.create([{
+          userId, title: (finalPrompt || "AI Content").substring(0, 50), type,
+          prompt: finalPrompt, currentRefinedPrompt: finalRefinedPrompt || undefined,
+          settings, references, status: "PROCESSING", generationsCount: 1,
+        }], { session });
+      }
 
-    if (content) {
-      oldS3Key = content.s3Key;
-      content.generationsCount = (content.generationsCount || 1) + 1;
-      content.type = type;
-      if (finalPrompt) content.prompt = finalPrompt;
-      if (finalRefinedPrompt) content.currentRefinedPrompt = finalRefinedPrompt;
-      content.settings = settings;
-      content.references = references;
-      content.status = "PROCESSING";
-      await content.save();
-    } else {
-      content = await AIContent.create({
-        userId,
-        title: (finalPrompt || "AI Content").substring(0, 50),
-        type,
-        prompt: finalPrompt,
-        currentRefinedPrompt: finalRefinedPrompt || undefined,
-        settings,
-        references,
-        status: "PROCESSING",
-      });
-    }
-
-    // 4. Create AIGeneration record
-    const generation = await AIGeneration.create({
-      contentId: content._id,
-      userId,
-      type,
-      prompt: finalPrompt,
-      refinedPrompt: finalRefinedPrompt || undefined,
-      status: "PENDING",
-      progress: 5,
-      reservedCredits: requiredReservation,
-      settings,
-      references,
-      metadata: {
-        replaceOriginal: Boolean(replaceOriginal),
-        oldS3Key: oldS3Key || undefined,
-      },
+      [generation] = await AIGeneration.create([{
+        contentId: content._id, userId, type, prompt: finalPrompt,
+        refinedPrompt: finalRefinedPrompt || undefined, status: "PENDING", progress: 5,
+        reservedCredits: requiredReservation, settings, references,
+        metadata: { replaceOriginal: Boolean(replaceOriginal), oldS3Key: oldS3Key || undefined },
+      }], { session });
+      content.latestGenerationId = generation._id;
+      await content.save({ session });
+      await creditService.reserveCredits(userId, requiredReservation, generation._id, session);
     });
 
-    content.latestGenerationId = generation._id;
-    await content.save();
-
-    // 5. Reserve credits atomically
+    // 6. Enqueue background execution
     try {
-      await creditService.reserveCredits(userId, requiredReservation, generation._id);
+      await aiJobQueue.enqueue(generation._id);
     } catch (error) {
-      generation.status = "FAILED";
-      generation.progress = 0;
-      generation.errorMessage = error.message;
-      await generation.save();
+      await creditService.refundCredits(userId, requiredReservation, generation._id, "Queue is temporarily unavailable");
+      await AIGeneration.updateOne(
+        { _id: generation._id, status: "PENDING" },
+        { $set: { status: "FAILED", progress: 0, errorMessage: "Queue is temporarily unavailable" } }
+      );
       await AIContent.updateOne(
         { _id: content._id, latestGenerationId: generation._id },
         { $set: { status: "FAILED" } }
       );
-      throw error;
+      throw new Error("Creation service is temporarily busy. Please try again shortly.");
     }
-
-    // 6. Enqueue background execution
-    aiJobQueue.enqueue(generation._id);
 
     const estimatedWait = type === "IMAGE" ? 45 : 65;
     return {

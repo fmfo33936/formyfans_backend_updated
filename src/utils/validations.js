@@ -688,14 +688,10 @@ module.exports = {
 // AI & Credit Validation Schemas
 const presignUploadSchema = Joi.object({
   fileName: Joi.string().trim().required(),
-  fileType: Joi.string().trim().required(),
+  fileType: Joi.string().trim().valid(
+    "image/jpeg", "image/png", "image/webp", "video/mp4", "video/quicktime", "video/webm"
+  ).required(),
   fileCategory: Joi.string().valid("videoReference", "imageReference", "aiInput").default("aiInput"),
-}).unknown(false);
-
-const directUploadSchema = Joi.object({
-  fileName: Joi.string().trim().required(),
-  fileType: Joi.string().trim().required(),
-  base64Data: Joi.string().required(),
 }).unknown(false);
 
 const refinePromptSchema = Joi.object({
@@ -726,11 +722,11 @@ const aiGenerationSchema = Joi.object({
   type: Joi.string().valid("IMAGE", "VIDEO", "VIDEO_EDIT").optional().messages({
     "any.only": "Type must be one of: IMAGE, VIDEO, VIDEO_EDIT",
   }),
-  contentId: Joi.string().trim().optional(),
+  contentId: Joi.string().hex().length(24).trim().optional(),
   replaceOriginal: Joi.boolean().optional(),
   prompt: Joi.string().trim().allow("").optional(),
   refinedPrompt: Joi.string().trim().allow("").optional(),
-  promptId: Joi.string().trim().optional(),
+  promptId: Joi.string().hex().length(24).trim().optional(),
   resolution: Joi.string().trim().valid("480p", "720p", "1080p").optional().messages({
     "any.only": "Resolution must be one of: 480p, 720p, 1080p",
   }),
@@ -749,6 +745,7 @@ const aiGenerationSchema = Joi.object({
 const purchaseCreditsSchema = Joi.object({
   credits: Joi.number().integer().min(1).required(),
   paymentMethodId: Joi.string().trim().optional(),
+  purchaseRequestId: Joi.string().trim().max(100).optional(),
 }).unknown(false);
 
 const calculateCreditPriceSchema = Joi.object({
@@ -766,6 +763,7 @@ const updatePricingSchema = Joi.object({
   pricePerCredit: Joi.number().min(0.001).optional(),
   defaultCredits: Joi.number().min(1).optional(),
   minCredits: Joi.number().min(1).optional(),
+  maxCredits: Joi.number().min(1).optional(),
   features: Joi.array().items(Joi.string()).optional(),
   openaiInputCreditsPer1kTokens: Joi.number().min(0.01).optional(),
   openaiOutputCreditsPer1kTokens: Joi.number().min(0.01).optional(),
@@ -774,12 +772,12 @@ const updatePricingSchema = Joi.object({
   imageReservationCredits: Joi.number().min(1).optional(),
   videoReservationCredits: Joi.number().min(1).optional(),
   videoEditReservationCredits: Joi.number().min(1).optional(),
+  reservationSafetyMultiplier: Joi.number().min(1).max(10).optional(),
 }).unknown(false);
 
 module.exports = {
   ...module.exports,
   presignUploadSchema,
-  directUploadSchema,
   refinePromptSchema,
   aiGenerationSchema,
   purchaseCreditsSchema,

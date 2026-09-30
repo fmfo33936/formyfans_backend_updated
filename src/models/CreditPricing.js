@@ -84,6 +84,13 @@ const creditPricingSchema = new mongoose.Schema(
       default: 6,
       min: 1,
     },
+    reservationSafetyMultiplier: {
+      type: Number,
+      required: true,
+      default: 2,
+      min: 1,
+      max: 10,
+    },
     isActive: {
       type: Boolean,
       default: true,
@@ -98,20 +105,17 @@ const creditPricingSchema = new mongoose.Schema(
 creditPricingSchema.statics.getActivePricing = async function () {
   let pricing = await this.findOne({ isActive: true }).sort({ updatedAt: -1 });
   if (!pricing) {
-    pricing = await this.create({
-      planName: "Unlock AI Premium Feature",
-      pricePerCredit: 0.1,
-      defaultCredits: 100,
-      minCredits: 10,
-      profitMarginMultiplier: 2.0,
-      magicaCreditMultiplier: 10,
-      videoReservationCredits: 5,
-      videoEditReservationCredits: 6,
-      imageReservationCredits: 1,
-      openaiInputCreditsPer1kTokens: 0.5,
-      openaiOutputCreditsPer1kTokens: 1.0,
-      isActive: true,
-    });
+    pricing = await this.findOneAndUpdate(
+      { isActive: true },
+      { $setOnInsert: { planName: "Unlock AI Premium Feature",
+        pricePerCredit: 0.1, defaultCredits: 100, minCredits: 10,
+        profitMarginMultiplier: 2.0, magicaCreditMultiplier: 10,
+        videoReservationCredits: 5, videoEditReservationCredits: 6,
+        imageReservationCredits: 1, reservationSafetyMultiplier: 2,
+        openaiInputCreditsPer1kTokens: 0.5,
+        openaiOutputCreditsPer1kTokens: 1.0, isActive: true } },
+      { upsert: true, returnDocument: "after", setDefaultsOnInsert: true }
+    );
   }
   return pricing;
 };

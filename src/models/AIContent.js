@@ -68,5 +68,7 @@ const aiContentSchema = new mongoose.Schema(
 );
 
 aiContentSchema.index({ userId: 1, createdAt: -1 });
+aiContentSchema.index({ userId: 1, s3Key: 1 });
+aiContentSchema.index({ userId: 1, mediaUrl: 1 });
 
 module.exports = mongoose.model("AIContent", aiContentSchema);

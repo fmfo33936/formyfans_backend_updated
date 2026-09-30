@@ -35,7 +35,7 @@ const aiPaymentHistorySchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["pending", "succeeded", "failed"],
+      enum: ["pending", "succeeded", "failed", "refunded", "disputed"],
       default: "pending",
       index: true,
     },

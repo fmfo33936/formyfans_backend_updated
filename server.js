@@ -35,6 +35,7 @@ const { initializeSocket } = require("./src/socket/socket");
 const startScheduledPostCron = require("./src/jobs/publishScheduledPosts");
 const startExpireBoostsCron = require("./src/jobs/expireBoosts");
 const aiJobQueue = require("./src/services/queue/aiJobQueue");
+const { configuredOrigins } = require("./src/config/cors");
 
 const PORT = process.env.PORT || 3000;
 
@@ -45,7 +46,7 @@ const startServer = async () => {
 
   const io = new Server(server, {
     cors: {
-      origin: "*",
+      origin: configuredOrigins,
       methods: ["GET", "POST", "OPTIONS"],
       credentials: true,
     },
@@ -61,13 +62,18 @@ const startServer = async () => {
     try {
       await mongoose.connect(mongoUri);
       logger.info("MongoDB connected successfully.");
-
-      await aiJobQueue.recoverOnStartup();
-
       startScheduledPostCron();
       startExpireBoostsCron();
     } catch (error) {
       logger.error(`MongoDB connection failed: ${error.message}`);
+    }
+
+    if (mongoose.connection.readyState === 1) {
+      try {
+        await aiJobQueue.recoverOnStartup();
+      } catch (error) {
+        logger.error(`AI queue startup failed: ${error.message}`);
+      }
     }
   }
 
@@ -78,6 +84,16 @@ const startServer = async () => {
   server.listen(PORT, () => {
     logger.info(`Server running on port ${PORT}`);
   });
+
+  const shutdown = async (signal) => {
+    logger.info(`${signal} received. Closing AI worker and server.`);
+    server.close();
+    await aiJobQueue.close();
+    await mongoose.connection.close();
+    process.exit(0);
+  };
+  process.once("SIGTERM", () => shutdown("SIGTERM"));
+  process.once("SIGINT", () => shutdown("SIGINT"));
 };
 
 startServer();

@@ -35,7 +35,7 @@ class MagicaService {
   /**
    * Generates Image from prompt using Magica Image node.
    */
-  async generateImage({ prompt, resolution = "1080p", aspectRatio = "16:9" }) {
+  async generateImage({ prompt, resolution = "1080p", aspectRatio = "16:9", onRunStarted }) {
     if (!this.isConfigured) {
       throw new Error("Magica API key is not configured. Please set MAGICA_API_KEY in your environment.");
     }
@@ -51,6 +51,7 @@ class MagicaService {
       nodeType: this.imageNodeType,
       submodelId: this.textImageSubmodel,
       inputPayload,
+      onRunStarted,
     });
 
     const mediaUrl = this._extractMediaUrl(run.output);
@@ -71,7 +72,7 @@ class MagicaService {
   /**
    * Generates Video from prompt using Magica Video node.
    */
-  async generateVideo({ prompt, resolution = "720p", aspectRatio = "16:9", duration = 10, audio = true }) {
+  async generateVideo({ prompt, resolution = "720p", aspectRatio = "16:9", duration = 10, audio = true, onRunStarted }) {
     if (!this.isConfigured) {
       throw new Error("Magica API key is not configured. Please set MAGICA_API_KEY in your environment.");
     }
@@ -88,6 +89,7 @@ class MagicaService {
       nodeType: this.videoNodeType,
       submodelId: this.textVideoSubmodel,
       inputPayload,
+      onRunStarted,
     });
 
     const mediaUrl = this._extractMediaUrl(run.output);
@@ -108,7 +110,7 @@ class MagicaService {
   /**
    * Edits Video from prompt + presigned video URL using Magica Video Edit node.
    */
-  async editVideo({ prompt, videoUrl, imageUrl = null, audio = true }) {
+  async editVideo({ prompt, videoUrl, imageUrl = null, audio = true, onRunStarted }) {
     if (!videoUrl) {
       throw new Error("videoUrl is required for video editing.");
     }
@@ -131,6 +133,7 @@ class MagicaService {
       nodeType: this.videoEditNodeType,
       submodelId: null,
       inputPayload,
+      onRunStarted,
     });
 
     const mediaUrl = this._extractMediaUrl(run.output);
@@ -151,7 +154,7 @@ class MagicaService {
   /**
    * Submits run request and polls until COMPLETED or FAILED.
    */
-  async _startRunAndWait({ nodeType, submodelId, inputPayload }) {
+  async _startRunAndWait({ nodeType, submodelId, inputPayload, onRunStarted }) {
     const runBody = { input: inputPayload };
     if (submodelId) {
       runBody.subModelId = submodelId;
@@ -180,7 +183,31 @@ class MagicaService {
       throw new Error("Magica did not return a runId in start response.");
     }
 
-    // Polling loop
+    if (onRunStarted) await onRunStarted(runId);
+
+    return this._waitForRun(runId);
+  }
+
+  async resumeRun({ runId, type }) {
+    const run = await this._waitForRun(runId);
+    const mediaUrl = this._extractMediaUrl(run.output);
+    if (!mediaUrl) throw new Error(`Magica did not return media for run ${runId}`);
+    const nodeType = type === "IMAGE"
+      ? this.imageNodeType
+      : type === "VIDEO"
+        ? this.videoNodeType
+        : this.videoEditNodeType;
+    return {
+      mediaUrl,
+      creditUsed: Number(run.creditUsed || 0),
+      runId: run.id || run.runId || runId,
+      provider: "magica",
+      nodeType,
+      rawResponse: run,
+    };
+  }
+
+  async _waitForRun(runId) {
     const deadline = Date.now() + this.timeoutMs;
     while (Date.now() < deadline) {
       let pollRes;

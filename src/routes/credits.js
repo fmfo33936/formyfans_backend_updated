@@ -3,6 +3,7 @@ const router = express.Router();
 const creditsController = require("../controllers/credits");
 const { verifyUser } = require("../middlewares/auth");
 const { verifyAdmin } = require("../middlewares/admin");
+const { creditPaymentRateLimit } = require("../middlewares/aiRateLimit");
 
 /**
  * Platform Credits & Payment Routes
@@ -22,10 +23,10 @@ router.get("/pricing", creditsController.getPricing);
 router.post("/calculate-price", verifyUser, creditsController.calculatePrice);
 
 // Initiate purchase via Stripe PaymentIntent
-router.post("/purchase", verifyUser, creditsController.createPurchasePaymentIntent);
+router.post("/purchase", verifyUser, creditPaymentRateLimit, creditsController.createPurchasePaymentIntent);
 
 // Verify completed Stripe payment and credit account
-router.post("/verify-payment", verifyUser, creditsController.verifyPayment);
+router.post("/verify-payment", verifyUser, creditPaymentRateLimit, creditsController.verifyPayment);
 
 // Dedicated AI subscription & credit purchase payment history
 router.get("/history", verifyUser, creditsController.getPaymentHistory);

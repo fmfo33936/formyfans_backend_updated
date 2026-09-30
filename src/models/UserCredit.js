@@ -31,6 +31,8 @@ const userCreditSchema = new mongoose.Schema(
       default: 0,
       min: 0,
     },
+    frozen: { type: Boolean, default: false, index: true },
+    freezeReason: { type: String, trim: true },
   },
   {
     timestamps: true,

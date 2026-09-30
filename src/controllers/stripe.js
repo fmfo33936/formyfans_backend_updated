@@ -134,6 +134,14 @@ const handleStripeWebhook = async (req, res) => {
       case "charge.refunded": {
         const sub = event.data.object;
 
+        if (sub.refunded && sub.payment_intent) {
+          const AIPaymentHistory = require("../models/AIPaymentHistory");
+          const aiPayment = await AIPaymentHistory.exists({ stripePaymentIntentId: sub.payment_intent });
+          if (aiPayment) {
+            await require("../services/credits/creditService").reversePurchasedCredits(sub.payment_intent, "refunded");
+          }
+        }
+
         if (sub?.metadata?.type === "create_campaign") {
           const campaignId = sub?.metadata.campaignId;
           if (!campaignId) return;
@@ -147,6 +155,17 @@ const handleStripeWebhook = async (req, res) => {
 
       case "charge.dispute.created": {
         const sub = event.data.object;
+
+        if (sub.charge) {
+          const charge = await getStripe().charges.retrieve(sub.charge);
+          if (charge.payment_intent) {
+            const AIPaymentHistory = require("../models/AIPaymentHistory");
+            const aiPayment = await AIPaymentHistory.exists({ stripePaymentIntentId: charge.payment_intent });
+            if (aiPayment) {
+              await require("../services/credits/creditService").reversePurchasedCredits(charge.payment_intent, "disputed");
+            }
+          }
+        }
 
         if (sub?.metadata?.type === "create_campaign") {
           const campaignId = sub?.metadata.campaignId;

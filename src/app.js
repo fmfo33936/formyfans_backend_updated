@@ -4,8 +4,12 @@ const routes = require("./routes");
 const { handleStripeWebhook } = require("./controllers/stripe");
 const { handleBoostWebhook } = require("./controllers/boost");
 const cors = require("cors");
+const { corsOptions } = require("./config/cors");
 const app = express();
 const presignedUrlRoutes = require("./awsConfig/upload");
+
+// Apply CORS before every route, including browser OPTIONS preflight requests.
+app.use(cors(corsOptions));
 app.post(
   "/api/webhook",
   express.raw({ type: "application/json" }),
@@ -21,8 +25,6 @@ app.post(
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
-app.use(cors());
 
 app.use((req, res, next) => {
   const start = Date.now();

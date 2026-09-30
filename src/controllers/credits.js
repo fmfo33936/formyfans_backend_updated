@@ -106,6 +106,9 @@ const calculatePrice = async (req, res, next) => {
 
     const pricing = await CreditPricing.getActivePricing();
     const credits = validatedData.credits;
+    if (credits < pricing.minCredits || credits > pricing.maxCredits) {
+      return errorHelper(res, null, `Please choose between ${pricing.minCredits} and ${pricing.maxCredits} credits.`, 400);
+    }
     const priceUsd = Number((credits * pricing.pricePerCredit).toFixed(2));
 
     return successHelper(
@@ -146,6 +149,9 @@ const createPurchasePaymentIntent = async (req, res, next) => {
         `Please choose at least ${pricing.minCredits} credits.`,
         400
       );
+    }
+    if (creditsToBuy > pricing.maxCredits) {
+      return errorHelper(res, null, `Please choose no more than ${pricing.maxCredits} credits.`, 400);
     }
 
     const priceUsd = Number((creditsToBuy * pricing.pricePerCredit).toFixed(2));
@@ -212,7 +218,11 @@ const createPurchasePaymentIntent = async (req, res, next) => {
       if (returnUrl) piPayload.return_url = returnUrl;
     }
 
-    const paymentIntent = await stripe.paymentIntents.create(piPayload);
+    const requestKey = validatedData.purchaseRequestId || req.get("Idempotency-Key");
+    const paymentIntent = await stripe.paymentIntents.create(
+      piPayload,
+      requestKey ? { idempotencyKey: `ai-credit-${userId}-${requestKey}` } : undefined
+    );
     const isSucceeded = paymentIntent.status === "succeeded";
 
     await AIPaymentHistory.create({
@@ -290,8 +300,22 @@ const verifyPayment = async (req, res, next) => {
     }
 
     const metadataUserId = paymentIntent.metadata?.userId;
-    if (metadataUserId && metadataUserId !== req.user._id.toString()) {
+    if (
+      metadataUserId !== req.user._id.toString() ||
+      paymentIntent.metadata?.type !== "ai_subscription_credit_purchase"
+    ) {
       return errorHelper(res, null, "This payment isn't linked to your account.", 403);
+    }
+
+    const paymentRecord = await AIPaymentHistory.findOne({
+      stripePaymentIntentId: paymentIntent.id,
+      userId: req.user._id,
+    });
+    if (!paymentRecord) {
+      return errorHelper(res, null, "We couldn't verify this credit payment. Please contact support.", 400);
+    }
+    if (["refunded", "disputed"].includes(paymentRecord.status)) {
+      return errorHelper(res, null, "This payment was reversed, so credits can't be added from it.", 400);
     }
 
     if (paymentIntent.status !== "succeeded") {
@@ -331,7 +355,9 @@ const verifyPayment = async (req, res, next) => {
     }
 
     const creditsToAdd = Number(paymentIntent.metadata?.creditsToBuy) || 0;
-    if (creditsToAdd <= 0) {
+    const receivedCents = paymentIntent.amount_received || paymentIntent.amount;
+    const expectedCents = Math.round(paymentRecord.amountPaidUsd * 100);
+    if (creditsToAdd <= 0 || creditsToAdd !== paymentRecord.creditsPurchased || receivedCents < expectedCents) {
       return errorHelper(res, null, "We couldn't confirm the credits for this payment. Please contact support.", 400);
     }
 
@@ -406,7 +432,7 @@ const updatePricing = async (req, res, next) => {
       return errorHelper(res, null, error, 400);
     }
 
-    let pricing = await CreditPricing.findOne({ isActive: true });
+    let pricing = await CreditPricing.findOne({ isActive: true }).sort({ updatedAt: -1 });
     if (!pricing) {
       pricing = new CreditPricing(validatedData);
     } else {

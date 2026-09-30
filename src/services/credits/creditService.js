@@ -11,11 +11,16 @@ class CreditService {
    * Retrieves or initializes the credit balance record for a user.
    */
   async getOrCreateUserCredit(userId) {
-    return UserCredit.findOneAndUpdate(
-      { userId },
-      { $setOnInsert: { balance: 0, reserved: 0, totalPurchased: 0, totalSpent: 0 } },
-      { upsert: true, returnDocument: "after", setDefaultsOnInsert: true }
-    );
+    try {
+      return await UserCredit.findOneAndUpdate(
+        { userId },
+        { $setOnInsert: { balance: 0, reserved: 0, totalPurchased: 0, totalSpent: 0 } },
+        { upsert: true, returnDocument: "after", setDefaultsOnInsert: true }
+      );
+    } catch (error) {
+      if (error?.code === 11000) return UserCredit.findOne({ userId });
+      throw error;
+    }
   }
 
   /**
@@ -24,41 +29,44 @@ class CreditService {
   async hasSufficientCredits(userId, requiredCredits) {
     const credit = await this.getOrCreateUserCredit(userId);
     const available = Math.max(0, credit.balance - credit.reserved);
-    return available >= requiredCredits;
+    return !credit.frozen && available >= requiredCredits;
   }
 
   /**
    * Reserves credits for an in-flight generation.
    * Atomic operation using findOneAndUpdate with condition available >= amount.
    */
-  async reserveCredits(userId, amount, generationId) {
+  async reserveCredits(userId, amount, generationId, externalSession = null) {
     if (amount <= 0) return true;
     let credit;
-    try {
-      await mongoose.connection.transaction(async (session) => {
-        credit = await UserCredit.findOneAndUpdate(
+    const reserve = async (session) => {
+      credit = await UserCredit.findOneAndUpdate(
           {
             userId,
-            $expr: { $gte: [{ $subtract: ["$balance", "$reserved"] }, amount] },
-          },
-          { $inc: { reserved: amount } },
-          { returnDocument: "after", session }
-        );
-        if (!credit) throw new Error("Insufficient available credit balance to reserve.");
+            frozen: { $ne: true },
+          $expr: { $gte: [{ $subtract: ["$balance", "$reserved"] }, amount] },
+        },
+        { $inc: { reserved: amount } },
+        { returnDocument: "after", session }
+      );
+      if (!credit) throw new Error("Insufficient available credit balance to reserve.");
 
-        await CreditTransaction.create([{
-          userId,
-          transactionType: "RESERVATION",
-          amount,
-          balanceBefore: credit.balance,
-          balanceAfter: credit.balance,
-          relatedGeneration: generationId,
-          idempotencyKey: `reservation_${generationId}`,
-          status: "COMPLETED",
-          description: `Reserved ${amount} credits for generation ${generationId}`,
-          metadata: { reservedAmount: amount, currentReservedTotal: credit.reserved },
-        }], { session });
-      });
+      await CreditTransaction.create([{
+        userId,
+        transactionType: "RESERVATION",
+        amount,
+        balanceBefore: credit.balance,
+        balanceAfter: credit.balance,
+        relatedGeneration: generationId,
+        idempotencyKey: `reservation_${generationId}`,
+        status: "COMPLETED",
+        description: `Reserved ${amount} credits for generation ${generationId}`,
+        metadata: { reservedAmount: amount, currentReservedTotal: credit.reserved },
+      }], { session });
+    };
+    try {
+      if (externalSession) await reserve(externalSession);
+      else await mongoose.connection.transaction(reserve);
     } catch (error) {
       if (error?.code === 11000) return this.getOrCreateUserCredit(userId);
       throw error;
@@ -121,11 +129,19 @@ class CreditService {
   async refundCredits(userId, reservedAmount, generationId, reason = "Generation failed") {
     if (reservedAmount <= 0) return;
     let updated;
+    let released = 0;
     try {
       await mongoose.connection.transaction(async (session) => {
+        const alreadySettled = await CreditTransaction.exists({
+          relatedGeneration: generationId,
+          transactionType: { $in: ["DEDUCTION", "REFUND"] },
+          status: "COMPLETED",
+        }).session(session);
+        if (alreadySettled) return;
+
         const current = await UserCredit.findOne({ userId }).session(session);
         if (!current) return;
-        const released = Math.min(reservedAmount, current.reserved);
+        released = Math.min(reservedAmount, current.reserved);
         if (released <= 0) return;
 
         updated = await UserCredit.findOneAndUpdate(
@@ -147,10 +163,10 @@ class CreditService {
         }], { session });
       });
     } catch (error) {
-      if (error?.code === 11000) return this.getOrCreateUserCredit(userId);
+      if (error?.code === 11000) return null;
       throw error;
     }
-    return updated;
+    return released > 0 ? { credit: updated, released } : null;
   }
 
   /**
@@ -164,6 +180,12 @@ class CreditService {
       await mongoose.connection.transaction(async (session) => {
         const current = await UserCredit.findOne({ userId }).session(session);
         if (!current) throw new Error("Credit account not found");
+        const payment = await AIPaymentHistory.findOne({ stripePaymentIntentId: paymentIntentId }).session(session);
+        if (!payment) throw new Error("AI credit payment record not found");
+        if (["refunded", "disputed"].includes(payment.status)) {
+          updated = current;
+          return;
+        }
 
         await CreditTransaction.create([{
           userId,
@@ -206,6 +228,59 @@ class CreditService {
     return updated;
   }
 
+  async reversePurchasedCredits(paymentIntentId, status) {
+    const payment = await AIPaymentHistory.findOne({ stripePaymentIntentId: paymentIntentId });
+    if (!payment || ["refunded", "disputed"].includes(payment.status)) return null;
+
+    if (payment.status !== "succeeded") {
+      await AIPaymentHistory.updateOne(
+        { _id: payment._id },
+        { $set: { status, [`metadata.${status}At`]: new Date() } }
+      );
+      return null;
+    }
+
+    let result;
+    await mongoose.connection.transaction(async (session) => {
+      const credit = await UserCredit.findOne({ userId: payment.userId }).session(session);
+      if (!credit) return;
+      const available = Math.max(0, credit.balance - credit.reserved);
+      const recovered = Math.min(payment.creditsPurchased, available);
+      const shortfall = payment.creditsPurchased - recovered;
+
+      result = await UserCredit.findOneAndUpdate(
+        { _id: credit._id },
+        {
+          $inc: { balance: -recovered, totalPurchased: -Math.min(payment.creditsPurchased, credit.totalPurchased) },
+          $set: {
+            frozen: shortfall > 0,
+            freezeReason: shortfall > 0 ? `${status} payment has ${shortfall} spent credits to review` : null,
+          },
+        },
+        { returnDocument: "after", session }
+      );
+      await CreditTransaction.create([{
+        userId: payment.userId,
+        transactionType: "ADJUSTMENT",
+        amount: -recovered,
+        balanceBefore: credit.balance,
+        balanceAfter: credit.balance - recovered,
+        relatedPayment: paymentIntentId,
+        idempotencyKey: `${status}_${paymentIntentId}`,
+        status: "COMPLETED",
+        description: `${status} AI credit purchase reversal`,
+        metadata: { purchasedCredits: payment.creditsPurchased, recovered, shortfall },
+      }], { session });
+      await AIPaymentHistory.updateOne(
+        { _id: payment._id },
+        { $set: { status, [`metadata.${status}At`]: new Date(), "metadata.recoveredCredits": recovered,
+          "metadata.creditShortfall": shortfall } },
+        { session }
+      );
+    });
+    return result;
+  }
+
 
   /**
    * Calculates platform credits from OpenAI token usage and Magica provider usage.
@@ -223,11 +298,8 @@ class CreditService {
     }
 
     if (magicaUsage) {
-      let providerCredits = Number(magicaUsage.creditUsed || 0);
-      // Magica API returns creditUsed in micro-units when > 1000 (e.g. 1,209,500 = ~1.2095 credits/USD)
-      if (providerCredits > 1000) {
-        providerCredits = providerCredits / 1000000;
-      }
+      const divisor = Math.max(1, Number(process.env.MAGICA_CREDIT_UNIT_DIVISOR) || 1000000);
+      const providerCredits = Number(magicaUsage.creditUsed || 0) / divisor;
       magicaCredits = providerCredits * pricing.magicaCreditMultiplier * pricing.profitMarginMultiplier;
     }
 
@@ -244,17 +316,26 @@ class CreditService {
   /**
    * Returns base credits required to reserve for a given generation type.
    */
-  async getRequiredReservationCredits(generationType) {
+  async getRequiredReservationCredits(generationType, settings = {}) {
     const pricing = await CreditPricing.getActivePricing();
+    let baseCredits;
     switch (generationType) {
       case "VIDEO":
-        return pricing.videoReservationCredits;
+        baseCredits = pricing.videoReservationCredits;
+        break;
       case "VIDEO_EDIT":
-        return pricing.videoEditReservationCredits;
+        baseCredits = pricing.videoEditReservationCredits;
+        break;
       case "IMAGE":
       default:
-        return pricing.imageReservationCredits;
+        baseCredits = pricing.imageReservationCredits;
     }
+    const durationFactor = generationType === "VIDEO"
+      ? Math.max(1, Number(settings.duration || 10) / 5)
+      : 1;
+    const resolutionFactor = settings.resolution === "1080p" ? 1.5 : settings.resolution === "720p" ? 1.25 : 1;
+    const safetyMultiplier = pricing.reservationSafetyMultiplier || 2;
+    return Math.ceil(baseCredits * durationFactor * resolutionFactor * safetyMultiplier);
   }
 }
 

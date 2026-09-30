@@ -46,14 +46,6 @@ const initializeSocket = (io) => {
         return next();
       }
 
-      // Fallback for development if userId query parameter is passed
-      const directUserId = socket.handshake.query?.userId || socket.handshake.auth?.userId;
-      if (directUserId) {
-        socket.userId = directUserId.toString().trim();
-        logger.info(`[Socket.IO Auth] Connected with direct userId parameter: ${socket.userId}`);
-        return next();
-      }
-
       // If no token and no userId provided
       logger.warn(`[Socket.IO Auth] Connection rejected for socket ${socket.id}: No Authorization header provided.`);
       return next(new Error("Authentication error: Authorization header (Bearer <token>) is required to connect."));
@@ -89,13 +81,13 @@ const initializeSocket = (io) => {
     }
 
     // Support explicit user_connected event from client
-    socket.on("user_connected", ({ userId }) => {
-      if (userId) {
-        joinUserRooms(userId);
+    socket.on("user_connected", ({ userId } = {}) => {
+      if (userId && userId.toString() === socket.userId) {
+        joinUserRooms(socket.userId);
         socket.emit("connected_ack", {
           success: true,
-          userId,
-          message: `Connected and listening to events for user_${userId}`,
+          userId: socket.userId,
+          message: `Connected and listening to events for user_${socket.userId}`,
         });
       }
     });
@@ -137,17 +129,11 @@ const emitToUser = (userId, event, data) => {
       logger.info(`[Socket.IO] Emitting '${event}' to user '${uid}'. Active clients in '${room1}': ${socketsInRoom}`);
 
       if (socketsInRoom === 0) {
-        logger.warn(`[Socket.IO] Notice: No active socket client connected in room '${room1}' for user '${uid}'.`);
+        logger.debug(`[Socket.IO] No active client in room '${room1}'. The client can continue with status polling.`);
       }
 
       // Emit to user private rooms
       ioInstance.to(room1).to(room2).to(room3).emit(event, data);
-    }
-
-    // In development mode: also broadcast to all active sockets for seamless Postman testing
-    if (process.env.NODE_ENV !== "production") {
-      ioInstance.emit(event, { ...data, targetUserId: uid });
-      logger.info(`[Socket.IO Dev] Broadcasted '${event}' to all active clients (targetUserId: ${uid}).`);
     }
 
     return true;

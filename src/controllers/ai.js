@@ -7,7 +7,6 @@ const AIUsage = require("../models/AIUsage");
 const { schemaValidator } = require("../utils/validator");
 const {
   presignUploadSchema,
-  directUploadSchema,
   refinePromptSchema,
   aiGenerationSchema,
 } = require("../utils/validations");
@@ -163,31 +162,6 @@ const presignUpload = async (req, res, next) => {
 };
 
 /**
- * 2.2 Direct Base64 Media Upload to S3
- * POST /api/ai/uploads/direct
- */
-const directUpload = async (req, res, next) => {
-  try {
-    const [error, validatedData] = schemaValidator(req.body, directUploadSchema);
-    if (error) {
-      return errorHelper(res, null, "Please check the file details and try again.", 400);
-    }
-
-    const { fileName, fileType, base64Data } = validatedData;
-    const result = await s3MediaService.uploadBase64({
-      userId: req.user._id,
-      fileName,
-      fileType,
-      base64Data,
-    });
-
-    return successHelper(res, result, "Your file has been uploaded and is ready to use.", 200);
-  } catch (err) {
-    return next(err);
-  }
-};
-
-/**
  * 3. Generate AI Image
  * POST /api/ai/generate/image
  */
@@ -252,6 +226,18 @@ const createGeneration = async (req, res, next) => {
     if (err.message && err.message.includes("Insufficient credits")) {
       return errorHelper(res, null, "You need more credits to create this. Please add credits and try again.", 402);
     }
+    if (err.message?.includes("Saved prompt not found")) {
+      return errorHelper(res, null, "We couldn't find that saved idea. Please choose it again.", 404);
+    }
+    if (err.message?.includes("AI content not found")) {
+      return errorHelper(res, null, "We couldn't find that creation in your account.", 404);
+    }
+    if (err.message?.includes("Media reference does not belong")) {
+      return errorHelper(res, null, "Please upload this file from your own account and try again.", 403);
+    }
+    if (err.message?.includes("temporarily")) {
+      return errorHelper(res, null, "The creation service is busy right now. Please try again shortly.", 503);
+    }
     return next(err);
   }
 };
@@ -262,6 +248,7 @@ const createGeneration = async (req, res, next) => {
  */
 const getGeneration = async (req, res, next) => {
   try {
+    res.set("Cache-Control", "no-store");
     const { id } = req.params;
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return errorHelper(res, null, "We couldn't find that creation. Please open it again.", 400);
@@ -304,7 +291,6 @@ module.exports = {
   getRefinedPrompt,
   listRefinedPrompts,
   presignUpload,
-  directUpload,
   generateImage,
   generateVideo,
   editVideo,

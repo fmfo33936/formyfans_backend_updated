@@ -1,5 +1,6 @@
 const { PutObjectCommand, GetObjectCommand, DeleteObjectCommand } = require("@aws-sdk/client-s3");
 const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
+const { Upload } = require("@aws-sdk/lib-storage");
 const { v4: uuidv4 } = require("uuid");
 const axios = require("axios");
 const s3Client = require("../../awsConfig/s3");
@@ -9,6 +10,23 @@ class S3MediaService {
   constructor() {
     this.bucket = process.env.AWS_BUCKET_NAME;
     this.region = process.env.AWS_REGION || "eu-north-1";
+    this.maxConcurrentTransfers = Math.max(1, Number(process.env.AI_S3_UPLOAD_CONCURRENCY) || 4);
+    this.activeTransfers = 0;
+    this.transferWaiters = [];
+  }
+
+  async acquireTransferSlot() {
+    if (this.activeTransfers < this.maxConcurrentTransfers) {
+      this.activeTransfers += 1;
+      return;
+    }
+    await new Promise((resolve) => this.transferWaiters.push(resolve));
+  }
+
+  releaseTransferSlot() {
+    const next = this.transferWaiters.shift();
+    if (next) next();
+    else this.activeTransfers = Math.max(0, this.activeTransfers - 1);
   }
 
   /**
@@ -67,56 +85,6 @@ class S3MediaService {
   }
 
   /**
-   * Directly uploads a Buffer or Base64 media to S3.
-   */
-  async uploadBuffer({ buffer, fileKey, contentType }) {
-    if (!this.bucket) {
-      throw new Error("AWS_BUCKET_NAME is not configured.");
-    }
-
-    const command = new PutObjectCommand({
-      Bucket: this.bucket,
-      Key: fileKey,
-      Body: buffer,
-      ContentType: contentType || "application/octet-stream",
-    });
-
-    await s3Client.send(command);
-
-    const s3Url = `https://${this.bucket}.s3.${this.region}.amazonaws.com/${fileKey}`;
-    return {
-      fileKey,
-      s3Url,
-    };
-  }
-
-  /**
-   * Direct upload from Base64 data string.
-   */
-  async uploadBase64({ userId, fileName, fileType, base64Data }) {
-    const cleanFileName = (fileName || "upload.bin").replace(/[^a-zA-Z0-9._-]/g, "_");
-    const fileKey = `users/${userId}/ai-inputs/${uuidv4()}-${cleanFileName}`;
-
-    // Strip data prefix if present (e.g., data:image/png;base64,...)
-    const base64Clean = base64Data.replace(/^data:[^;]+;base64,/, "");
-    const buffer = Buffer.from(base64Clean, "base64");
-
-    const result = await this.uploadBuffer({
-      buffer,
-      fileKey,
-      contentType: fileType || "application/octet-stream",
-    });
-
-    const presignedReadUrl = await this.createPresignedReadUrl({ fileKey, expiresIn: 3600 });
-
-    return {
-      fileKey: result.fileKey,
-      s3Url: result.s3Url,
-      presignedReadUrl,
-    };
-  }
-
-  /**
    * Generates a temporary presigned GET URL for Magica or users to access private S3 media.
    */
   async createPresignedReadUrl({ fileKey, expiresIn = 3600 }) {
@@ -152,28 +120,33 @@ class S3MediaService {
   async downloadAndSaveToS3({ sourceUrl, userId, generationId, type }) {
     if (!sourceUrl) return null;
 
+    await this.acquireTransferSlot();
     try {
       logger.info(`Downloading AI generated ${type} from Magica: ${sourceUrl}`);
       const response = await axios.get(sourceUrl, {
-        responseType: "arraybuffer",
+        responseType: "stream",
         timeout: 60000,
         headers: {
           "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         },
       });
 
-      const buffer = Buffer.from(response.data);
-      const isVideo = type === "VIDEO" || type === "VIDEO_EDIT" || sourceUrl.endsWith(".mp4");
-      const ext = isVideo ? "mp4" : "png";
-      const contentType = isVideo ? "video/mp4" : "image/png";
+      const responseContentType = String(response.headers["content-type"] || "").split(";")[0];
+      const isVideo = type === "VIDEO" || type === "VIDEO_EDIT" || responseContentType.startsWith("video/");
+      const contentType = responseContentType || (isVideo ? "video/mp4" : "image/png");
+      const ext = isVideo ? "mp4" : contentType.includes("jpeg") ? "jpg" : "png";
 
       const fileKey = `users/${userId}/ai-outputs/${generationId}_${Date.now()}.${ext}`;
 
-      const { s3Url } = await this.uploadBuffer({
-        buffer,
-        fileKey,
-        contentType,
+      const upload = new Upload({
+        client: s3Client,
+        params: { Bucket: this.bucket, Key: fileKey, Body: response.data, ContentType: contentType },
+        queueSize: 2,
+        partSize: 8 * 1024 * 1024,
+        leavePartsOnError: false,
       });
+      await upload.done();
+      const s3Url = `https://${this.bucket}.s3.${this.region}.amazonaws.com/${fileKey}`;
 
       const presignedReadUrl = await this.createPresignedReadUrl({
         fileKey,
@@ -190,6 +163,8 @@ class S3MediaService {
     } catch (err) {
       logger.error(`Failed to download and upload AI output to S3: ${err.message}`);
       throw new Error(`Could not save AI output to S3: ${err.message}`);
+    } finally {
+      this.releaseTransferSlot();
     }
   }
 }

@@ -91,6 +91,8 @@ const aiGenerationSchema = new mongoose.Schema(
     completedAt: {
       type: Date,
     },
+    startedAt: { type: Date },
+    failedAt: { type: Date },
   },
   {
     timestamps: true,
@@ -98,5 +100,7 @@ const aiGenerationSchema = new mongoose.Schema(
 );
 
 aiGenerationSchema.index({ userId: 1, status: 1, createdAt: -1 });
+aiGenerationSchema.index({ status: 1, createdAt: 1 });
+aiGenerationSchema.index({ userId: 1, type: 1, createdAt: -1 });
 
 module.exports = mongoose.model("AIGeneration", aiGenerationSchema);

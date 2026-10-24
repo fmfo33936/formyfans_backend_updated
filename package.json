@@ -4,8 +4,8 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "cross-env NODE_ENV=development nodemon server.js",
-    "start": "NODE_ENV=production node server.js",
+    "dev": "node init && cross-env NODE_ENV=development nodemon server.js",
+    "start": "node init && NODE_ENV=production node server.js",
     "redis:up": "docker compose -f docker-compose.redis.yml up -d",
     "redis:down": "docker compose -f docker-compose.redis.yml down",
     "redis:logs": "docker compose -f docker-compose.redis.yml logs -f redis",
